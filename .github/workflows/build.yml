@@ -68,6 +68,16 @@ jobs:
           path: build/aarch64-linux-gnu/app/downloads
           key: fenix-click-dl-${{ hashFiles('build.sh') }}
 
+      # The payload build links libxul against the translation layer's own
+      # libandroid.so.0, and takes it from here rather than rebuilding atlas:
+      # the link shim then measures the same atlas this click ships, and its
+      # 283-entry gap list cannot drift from it.  See gecko/README.md.
+      - name: Collect libandroid
+        run: |
+          cp build/aarch64-linux-gnu/app/atlas-build/libandroid.so.0 \
+             atlas-libandroid-arm64.so
+          sha256sum atlas-libandroid-arm64.so | tee atlas-libandroid-arm64.so.sha256
+
       - name: Upload click package
         uses: actions/upload-artifact@v4
         with:
@@ -90,9 +100,9 @@ jobs:
           tag="v${version}-atl.${atl_sha}"
           echo "publishing $click as $tag"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "$click" --clobber
+            gh release upload "$tag" "$click" atlas-libandroid-arm64.so* --clobber
           else
-            gh release create "$tag" "$click" \
+            gh release create "$tag" "$click" atlas-libandroid-arm64.so* \
               --title "Firefox (Fenix) ${version} — atl-touch ${atl_sha}" \
               --prerelease \
               --notes "Unofficial test build of Firefox for Android (Fenix) for Ubuntu Touch 24.04 (arm64), running on OpenJDK 21 through the Android Translation Layer, atlas commit \`${atl_sha}\`. Not a stable release — for testing only."

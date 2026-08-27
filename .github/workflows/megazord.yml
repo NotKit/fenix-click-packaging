@@ -1,0 +1,90 @@
+name: Build the megazord
+
+# libmegazord.so for aarch64 Linux -- application-services' full megazord, which
+# Mozilla publishes for linux-x86-64 and darwin only. It tracks the appservices
+# revision Fenix's class path pins, which moves a few times a year, so this is
+# dispatch-only and its output is a release asset the payload build downloads.
+#
+# On an arm64 runner, so nothing here is cross: the triplet-prefixed compilers
+# the scripts ask for are the host's own, and libz comes from apt instead of a
+# second sysroot. ~45 minutes; NSS is most of it, the cargo build is three.
+
+on:
+  workflow_dispatch:
+    inputs:
+      rev:
+        description: "application-services revision (empty: the one build-megazord.sh pins)"
+        default: ""
+      version:
+        description: "MEGAZORD_VERSION the built library reports (empty: as pinned)"
+        default: ""
+      publish:
+        description: "Publish libmegazord-arm64.so as a release asset"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  megazord:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-14 g++-14 zlib1g-dev python3-venv ninja-build
+          # The scripts address the toolchain by triplet, which is how the
+          # cross build on x86_64 does it; on arm64 those are the host's own.
+          aarch64-linux-gnu-gcc-14 --version | head -1
+
+      - name: Check out application-services
+        run: |
+          git clone https://github.com/mozilla/application-services appservices
+          echo "APPSERVICES=$PWD/appservices" >> "$GITHUB_ENV"
+
+      - name: NSS
+        run: gecko/megazord/build-nss.sh --out "$PWD/build/megazord/nss-arm64-static"
+
+      - name: Megazord
+        env:
+          SYSLIBS: /usr/lib/aarch64-linux-gnu
+          MEGAZORD_REV: ${{ inputs.rev }}
+          MEGAZORD_VERSION: ${{ inputs.version }}
+        run: |
+          # An empty input must fall back to the script's own pin, not to "".
+          [ -n "$MEGAZORD_REV" ] || unset MEGAZORD_REV
+          [ -n "$MEGAZORD_VERSION" ] || unset MEGAZORD_VERSION
+          gecko/megazord/build-megazord.sh
+          cp build/megazord/libmegazord.so libmegazord-arm64.so
+          sha256sum libmegazord-arm64.so | tee libmegazord-arm64.so.sha256
+          # The version the library reports is what the class path's Kotlin
+          # bindings expect; record it for the release tag.
+          strings libmegazord-arm64.so | grep -m1 -E '^15[0-9]\.20[0-9]{12}$' \
+            | sed 's/^/MEGAZORD_BUILT_VERSION=/' >> "$GITHUB_ENV" || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libmegazord-arm64
+          path: libmegazord-arm64.so*
+          if-no-files-found: error
+
+      - name: Publish
+        if: ${{ inputs.publish }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver="${MEGAZORD_BUILT_VERSION:-${{ inputs.version }}}"
+          [ -n "$ver" ] || ver="$(git rev-parse --short HEAD)"
+          tag="megazord-$ver"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" libmegazord-arm64.so* --clobber
+          else
+            gh release create "$tag" libmegazord-arm64.so* \
+              --title "megazord $ver (aarch64)" --prerelease \
+              --notes "application-services full megazord, built for aarch64-unknown-linux-gnu by .github/workflows/megazord.yml."
+          fi

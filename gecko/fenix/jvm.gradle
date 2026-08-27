@@ -1,0 +1,232 @@
+// Produce a HotSpot class path for Fenix instead of dex.
+//
+// Applied on the root project from the tree's own build.gradle, only when
+// -PfenixJvm is set, so an unflagged Mozilla build never configures any of
+// this.  build-classpath.sh passes the path to this file as -PfenixJvmInclude.
+//
+// Variant: debug. debug is the only Fenix build type with minifyEnabled=false;
+// every other one runs R8, whose dex output does not survive translation back
+// to class files (`new-instance` types are lost).
+//
+// What lands in $FENIX_JVM_OUT/classpath/:
+//   fenix-app.jar    - :fenix's own compiled classes (Kotlin + javac output)
+//   fenix-res.jar    - the runtime R classes AGP would have dexed
+//   <group>-<module>-<version>.jar / <project>.jar - every artifact on the app's
+//                      runtime class path, AAR classes.jar entries included;
+//                      AGP has already unpacked those for us
+// plus $FENIX_JVM_OUT/apk/ - the APKs from the same build, for resources.
+//
+// Everything hangs off gradle.projectsEvaluated: this file is evaluated with the
+// root project, so its afterEvaluate would run before AGP's and the variant
+// configurations would not exist yet.
+
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier
+
+def variant = project.findProperty('fenixJvmVariant') ?: 'debug'
+def variantCap = variant.capitalize()
+
+def outDir = file(System.getenv('FENIX_JVM_OUT')
+        ?: { throw new GradleException('fenix-jvm: set FENIX_JVM_OUT') }())
+def classpathDir = new File(outDir, 'classpath')
+def apkDir = new File(outDir, 'apk')
+
+gradle.projectsEvaluated {
+    def app = project(':fenix')
+
+    // AGP resolves AAR dependencies to their classes.jar under this artifact
+    // type; asking for it keeps us off the internal AndroidArtifacts API.
+    // resolvedArtifacts is a Provider, which is what makes this safe to hold
+    // across the configuration cache.
+    def artifacts = app.configurations.getByName("${variant}RuntimeClasspath")
+            .incoming.artifactView {
+                attributes { attribute(Attribute.of('artifactType', String), 'android-classes-jar') }
+            }.artifacts
+    def resolvedArtifacts = artifacts.resolvedArtifacts
+    def artifactFiles = artifacts.artifactFiles
+
+    // :fenix is com.android.application, so there is no bundleLibRuntimeToJar to
+    // harvest (that is a library task). Its own classes are the two compiler
+    // output directories AGP would hand to d8.
+    def kotlinClasses = app.tasks.named("compile${variantCap}Kotlin")
+            .flatMap { it.destinationDirectory }
+    def javacClasses = app.tasks.named("compile${variantCap}JavaWithJavac")
+            .flatMap { it.destinationDirectory }
+
+    // The R classes the app would dex. AGP writes them next to the
+    // resource-linking task's output; there is no public artifact for it.
+    def processResources = app.tasks.named("process${variantCap}Resources")
+    // AGP 9.2.1 calls this intermediate compile_and_runtime_r_class_jar; older
+    // AGPs called it compile_and_runtime_not_namespaced_r_class_jar. Whichever
+    // exists, the R.jar in it is the transitive one -- 845 R classes over 313
+    // packages, i.e. every library's R as well as :fenix's, with the final ids
+    // aapt2 linked. It is what AGP dexes, so it is what we jar.
+    def rJarRoots = ['compile_and_runtime_r_class_jar',
+                     'compile_and_runtime_not_namespaced_r_class_jar'].collect {
+        app.layout.buildDirectory.dir("intermediates/${it}/${variant}")
+    }
+
+    def packageApk = app.tasks.named("package${variantCap}")
+    def apkOutDir = app.layout.buildDirectory.dir("outputs/apk/${variant}")
+
+    def jarApp = app.tasks.register('jarFenixJvmApp') {
+        group = 'jvm port'
+        description = "Jar :fenix's own ${variant} classes for the desktop JVM (no d8)."
+        inputs.files(kotlinClasses, javacClasses)
+        outputs.file(new File(classpathDir, 'fenix-app.jar'))
+        def dirs = [kotlinClasses, javacClasses]
+        def target = new File(classpathDir, 'fenix-app.jar')
+        doLast {
+            target.parentFile.mkdirs()
+            int n = 0
+            def seen = [] as Set
+            def out = new java.util.jar.JarOutputStream(new java.io.BufferedOutputStream(
+                    new java.io.FileOutputStream(target)))
+            dirs.each { d ->
+                def root = d.get().asFile
+                if (!root.isDirectory()) {
+                    return
+                }
+                root.traverse(type: groovy.io.FileType.FILES) { f ->
+                    def rel = root.toPath().relativize(f.toPath()).toString()
+                    if (!seen.add(rel)) {
+                        return
+                    }
+                    out.putNextEntry(new java.util.zip.ZipEntry(rel))
+                    f.withInputStream { ins -> out << ins }
+                    out.closeEntry()
+                    if (rel.endsWith('.class')) {
+                        n++
+                    }
+                }
+            }
+            out.close()
+            logger.lifecycle("fenix-jvm: ${target.name} <- ${n} classes")
+        }
+    }
+
+    def copyDeps = app.tasks.register('copyFenixJvmDeps') {
+        group = 'jvm port'
+        description = 'Copy runtime-classpath dependency jars for the desktop JVM.'
+        inputs.files(artifactFiles)
+        outputs.file(new File(classpathDir, 'deps.list'))
+        def resolved = resolvedArtifacts
+        def dest = classpathDir
+        doLast {
+            dest.mkdirs()
+            def written = [] as Set
+            resolved.get().each { artifact ->
+                def id = artifact.id.componentIdentifier
+                // Must be String, not GString: these go into a Set that is then
+                // queried with real Strings, and the two never hash alike.
+                String name
+                if (id instanceof ModuleComponentIdentifier) {
+                    name = "${id.group}-${id.module}-${id.version}.jar"
+                } else if (id instanceof ProjectComponentIdentifier) {
+                    name = "${id.projectName.replace(':', '-')}.jar"
+                } else {
+                    name = artifact.file.name
+                }
+                // Two different components can still collide (a project and a
+                // module of the same name); keep both rather than lose one.
+                int dup = 1
+                while (!written.add(name)) {
+                    name = name.replaceFirst(/(\.jar)?$/, "~${dup++}.jar")
+                }
+                java.nio.file.Files.copy(artifact.file.toPath(),
+                        new File(dest, name).toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            }
+            // Drop jars from an earlier run whose dependency is gone; a stale jar
+            // on the class path would shadow the current one.
+            dest.listFiles({ f ->
+                f.name.endsWith('.jar') && !f.name.startsWith('fenix-') && !written.contains(f.name)
+            } as FileFilter)?.each {
+                logger.lifecycle("fenix-jvm: removing stale ${it.name}")
+                it.delete()
+            }
+            new File(dest, 'deps.list').text = written.sort().join('\n') + '\n'
+            logger.lifecycle("fenix-jvm: copied ${written.size()} dependency jars to ${dest}")
+        }
+    }
+
+    def copyRJar = app.tasks.register('copyFenixJvmRJar') {
+        group = 'jvm port'
+        description = 'Copy the runtime R class jar for the desktop JVM.'
+        // as an input, not just a dependency: without one Gradle calls this
+        // up-to-date forever and a new string never reaches the class path
+        inputs.files(processResources.map { it.outputs.files })
+        outputs.file(new File(classpathDir, 'fenix-res.jar'))
+        def rootDirProviders = rJarRoots
+        def target = new File(classpathDir, 'fenix-res.jar')
+        doLast {
+            def roots = rootDirProviders.collect { it.get().asFile }
+            def rJar = null
+            roots.each { root ->
+                if (rJar == null && root.exists()) {
+                    root.traverse(type: groovy.io.FileType.FILES) { f ->
+                        if (f.name == 'R.jar' && rJar == null) {
+                            rJar = f
+                        }
+                    }
+                }
+            }
+            if (rJar == null) {
+                throw new GradleException("fenix-jvm: no R.jar under ${roots}; " +
+                        'AGP moved the runtime R class jar, update this task')
+            }
+            target.parentFile.mkdirs()
+            java.nio.file.Files.copy(rJar.toPath(), target.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            logger.lifecycle("fenix-jvm: ${target.name} <- ${rJar}")
+        }
+    }
+
+    // Not a Copy task: Gradle resolves a Copy's `from` while building the task
+    // graph, which is before the APK exists.
+    def copyApk = app.tasks.register('copyFenixJvmApk') {
+        group = 'jvm port'
+        description = 'Copy the matching APKs for the desktop JVM (resources and assets).'
+        // dependsOn + a directory input, not `packageApk.map { it.outputs }`:
+        // holding the task itself is a configuration-cache error (PackageApplication
+        // is not serializable).
+        dependsOn packageApk
+        inputs.files(apkOutDir)
+        outputs.dir(apkDir)
+        def src = apkOutDir
+        def dest = apkDir
+        doLast {
+            def root = src.get().asFile
+            def apks = []
+            if (root.isDirectory()) {
+                root.traverse(type: groovy.io.FileType.FILES) { f ->
+                    if (f.name.endsWith('.apk')) {
+                        apks << f
+                    }
+                }
+            }
+            if (apks.isEmpty()) {
+                throw new GradleException("fenix-jvm: no APK under ${root}")
+            }
+            dest.mkdirs()
+            dest.listFiles({ f -> f.name.endsWith('.apk') } as FileFilter)?.each { it.delete() }
+            apks.each {
+                java.nio.file.Files.copy(it.toPath(), new File(dest, it.name).toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            }
+            logger.lifecycle("fenix-jvm: copied ${apks.size()} apk(s) to ${dest}")
+        }
+    }
+
+    app.tasks.register('classesForJvm') {
+        group = 'jvm port'
+        description = "Build the desktop JVM class path from the ${variant} variant (no APK)."
+        dependsOn jarApp, copyDeps, copyRJar
+    }
+
+    app.tasks.register('jarForJvm') {
+        group = 'jvm port'
+        description = "Build the desktop JVM class path and the matching APKs from the ${variant} variant."
+        dependsOn jarApp, copyDeps, copyRJar, copyApk
+    }
+}

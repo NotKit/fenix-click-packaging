@@ -1,0 +1,237 @@
+name: Build Gecko payload
+
+# Produces fenix-jvm-payload-arm64.tar.zst -- Gecko for aarch64, Fenix's class
+# path, the resource APK and the megazord -- and publishes it as a release asset
+# for build.sh to download. gecko/README.md documents the same sequence by hand.
+#
+# This is a cross build on an ordinary x86_64 runner. The long pole is `mach
+# build`: several hours cold, much less with a warm ccache.
+
+on:
+  workflow_dispatch:
+    inputs:
+      gecko_ref:
+        description: "Branch, tag or SHA of NotKit/firefox to build"
+        default: atl/android-toolkit-glibc
+      publish:
+        description: "Publish the tarball as a release asset"
+        type: boolean
+        default: true
+      bump:
+        description: "Open a PR pointing build.sh at the new payload"
+        type: boolean
+        default: false
+  # So a push to the Gecko branch can start a build without a commit here.
+  repository_dispatch:
+    types: [gecko-push]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: payload
+  cancel-in-progress: false
+
+env:
+  GECKO_REPO: NotKit/firefox
+  GECKO_REF: ${{ inputs.gecko_ref || github.event.client_payload.ref || 'atl/android-toolkit-glibc' }}
+  MOZBUILD_STATE_PATH: ${{ github.workspace }}/.mozbuild
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 2G
+
+jobs:
+  payload:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      # A Gecko objdir, an Android SDK and a Gradle cache do not fit in what an
+      # Ubuntu runner has free by default.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/.ghcup /usr/local/share/boost \
+                      /opt/hostedtoolcache/CodeQL /usr/share/swift || true
+          sudo docker image prune -af || true
+          df -h /
+
+      - name: Packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            mesa-common-dev libgles-dev zstd zip unzip rsync python3-venv ccache
+
+      - name: Check out Gecko
+        run: |
+          git clone --depth 1 --branch "$GECKO_REF" \
+            "https://github.com/$GECKO_REPO" gecko-src
+          git -C gecko-src rev-parse HEAD | tee gecko.sha
+
+      # A repository gets 10 GB of Actions cache in total, so the three caches
+      # below are sized to fit together: toolchains ~4 GB, ccache 2 GB, Gradle
+      # ~2 GB.  The two fixed keys are saved once and then reused; bump the -vN
+      # to refetch after a toolchain or Gradle upgrade.
+      #
+      # ~/.mozbuild is clang, rust, the two sysroots, node, the Android SDK and
+      # the JDK the Gradle build runs on: 15 minutes to refetch.
+      - name: Restore toolchain cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.MOZBUILD_STATE_PATH }}
+          key: mozbuild-v1
+          restore-keys: mozbuild-
+
+      # C and C++ only -- the Rust half is rebuilt every time -- but that is
+      # still most of the compile.
+      - name: Restore compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ github.run_id }}
+          restore-keys: ccache-
+
+      - name: Restore Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-v1
+          restore-keys: gradle-
+
+      - name: Bootstrap
+        run: |
+          cd gecko-src
+          ./mach --no-interactive bootstrap --application-choice mobile_android
+
+      # --disable-debug-symbols is the CI-only difference: libxul is 3.1 GB
+      # unstripped and stage-gecko.sh removes every debug section anyway, so
+      # building them costs an hour and most of the disk for nothing.
+      - name: Configure
+        run: |
+          cd gecko-src
+          cat > mozconfig-ci <<'EOF'
+          . "$topsrcdir/mozconfig-atl-glibc-arm64"
+          ac_add_options --disable-debug-symbols
+          ac_add_options --with-ccache=ccache
+          EOF
+          mkdir -p "$GITHUB_WORKSPACE/gecko/android-libs-shim-arm64"
+          export MOZCONFIG=$PWD/mozconfig-ci
+          export ATL_SHIM_DIR=$GITHUB_WORKSPACE/gecko
+          echo "MOZCONFIG=$MOZCONFIG" >> "$GITHUB_ENV"
+          echo "ATL_SHIM_DIR=$ATL_SHIM_DIR" >> "$GITHUB_ENV"
+          ./mach configure
+          ./mach environment --format json \
+            | python3 -c 'import json,sys; print("OBJDIR=" + json.load(sys.stdin)["topobjdir"])' \
+            >> "$GITHUB_ENV"
+
+      # The link shim is per-architecture because it names the translation
+      # layer's own libandroid.so.0, and that library comes from the click build
+      # -- the same atlas the click ships, so the two cannot drift.
+      - name: Link shim
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+                --jq '[.[] | select(.assets[]?.name=="atlas-libandroid-arm64.so")][0].tag_name')
+          [ -n "$tag" ] || { echo "no click release carries atlas-libandroid-arm64.so" >&2; exit 1; }
+          echo "libandroid from $tag"
+          gh release download "$tag" -p atlas-libandroid-arm64.so -D gecko/
+          cd gecko/android-libs-shim
+          OUTDIR=../android-libs-shim-arm64 \
+          ATL_LIBANDROID="$GITHUB_WORKSPACE/gecko/atlas-libandroid-arm64.so" \
+          CC="$MOZBUILD_STATE_PATH/clang/bin/clang --target=aarch64-linux-gnu -fuse-ld=lld" \
+          SYSROOT="$MOZBUILD_STATE_PATH/sysroot-aarch64-linux-gnu" \
+            ./regenerate.sh
+
+      - name: Build Gecko
+        run: cd gecko-src && ./mach build
+
+      - name: Save compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-${{ github.run_id }}
+
+      - name: Stage Gecko
+        run: |
+          export OBJCOPY=$MOZBUILD_STATE_PATH/clang/bin/llvm-objcopy
+          export READELF=$MOZBUILD_STATE_PATH/clang/bin/llvm-readelf
+          gecko/stage-gecko.sh --objdir "$OBJDIR" --out build/gecko
+          gecko/build-mozglue.sh --objdir "$OBJDIR" --out build/mozglue/libmozglue.so
+
+      - name: Build the Fenix class path
+        run: |
+          export JAVA_HOME=$(echo "$MOZBUILD_STATE_PATH"/jdk/jdk-17*)
+          export ANDROID_SDK_ROOT=$MOZBUILD_STATE_PATH/android-sdk-linux
+          gecko/fenix/build-classpath.sh --src gecko-src \
+            --mozconfig "$MOZCONFIG" --out build/fenix
+          gecko/fenix/stage-apk.sh --apk-dir build/fenix/apk \
+            --omni "$OBJDIR/dist/bin/assets/omni.ja" \
+            --out build/fenix/fenix-jvm.apk
+
+      # Built by megazord.yml, a few times a year; see gecko/README.md.
+      - name: Fetch the megazord
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+                --jq '[.[] | select(.assets[]?.name=="libmegazord-arm64.so")][0].tag_name')
+          [ -n "$tag" ] || { echo "no release carries libmegazord-arm64.so" >&2; exit 1; }
+          echo "megazord from $tag"
+          gh release download "$tag" -p libmegazord-arm64.so -D build/megazord
+          mv build/megazord/libmegazord-arm64.so build/megazord/libmegazord.so
+
+      - name: Pack
+        run: |
+          scripts/make-payload.sh \
+            --gecko     build/gecko \
+            --mozglue   build/mozglue/libmozglue.so \
+            --classpath build/fenix/classpath \
+            --apk       build/fenix/fenix-jvm.apk \
+            --megazord  build/megazord/libmegazord.so
+          cat dist/fenix-jvm-payload-arm64.tar.zst.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fenix-jvm-payload-arm64
+          path: dist/fenix-jvm-payload-arm64.tar.zst*
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Publish
+        if: ${{ inputs.publish || github.event_name == 'repository_dispatch' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(cut -c1-12 gecko.sha)
+          tag="payload-$(date -u +%Y%m%d)-g${sha}"
+          echo "PAYLOAD_TAG=$tag" >> "$GITHUB_ENV"
+          echo "PAYLOAD_SHA256=$(cut -d' ' -f1 dist/fenix-jvm-payload-arm64.tar.zst.sha256)" >> "$GITHUB_ENV"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/fenix-jvm-payload-arm64.tar.zst* --clobber
+          else
+            gh release create "$tag" dist/fenix-jvm-payload-arm64.tar.zst* \
+              --title "Payload — Gecko ${sha}" \
+              --prerelease \
+              --notes "Gecko \`${sha}\` of ${GECKO_REPO} branch \`${GECKO_REF}\`, Fenix's class path and the resource APK, packed by .github/workflows/payload.yml."
+          fi
+
+      - name: Point build.sh at it
+        if: ${{ inputs.bump && inputs.publish }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="payload-bump-${PAYLOAD_TAG}"
+          git switch -c "$branch"
+          sed -i -e "s/^FENIX_PAYLOAD_TAG=.*/FENIX_PAYLOAD_TAG=\"\${FENIX_PAYLOAD_TAG:-$PAYLOAD_TAG}\"/" \
+                 -e "s/^FENIX_PAYLOAD_SHA256=.*/FENIX_PAYLOAD_SHA256=\"\${FENIX_PAYLOAD_SHA256:-$PAYLOAD_SHA256}\"/" build.sh
+          if git diff --quiet build.sh; then echo "build.sh unchanged"; exit 0; fi
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -am "build: take the payload from $PAYLOAD_TAG"
+          git push -u origin "$branch"
+          gh pr create --fill --base "${GITHUB_REF_NAME}"

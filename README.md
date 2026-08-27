@@ -18,7 +18,7 @@ Siblings, for orientation:
 | --- | --- |
 | **mercurygram-click-packaging** | Telegram on ART + `bionic_translation` + dex — a native arm64 build under qemu |
 | **mercurygram-src** `linux-port/click/` | the same app on OpenJDK — the cross build this one is modelled on |
-| **firefox-atl** | where Gecko, the class path, the shim and the runners are developed |
+| **firefox-atl** | where Gecko, the class path, the shim and the runners are developed; `gecko/` here is its publishable half |
 
 ## Layout of the installed click
 
@@ -66,20 +66,21 @@ None of it can be cross-built; all of it changes rarely.
 
 **`fenix-jvm-payload-arm64.tar.zst`** (205 MB) — Gecko for aarch64, Fenix's
 class path, the resource APK and the aarch64 megazord. This is the half that
-changes with every Gecko or Fenix build. Gecko itself is built from
+changes with every Gecko or Fenix build, and `gecko/` builds it: the shim trees
+Gecko compiles and links against, and the scripts that stage the objdir, build
+Fenix's class path and pack the result. Gecko itself is
 [NotKit/firefox](https://github.com/NotKit/firefox) branch
-`atl/android-toolkit-glibc`; the staging of all five inputs is driven from the
-**firefox-atl** tree, which documents each one:
+`atl/android-toolkit-glibc`, configured by that tree's own
+`mozconfig-atl-glibc-arm64`.
 
-    scripts/make-payload.sh \
-        --gecko     <firefox-atl payload-arm64/gecko> \
-        --classpath <jvm-run/fenixbuild output: the ~360 jars> \
-        --apk       <jvm-run/fenixbuild/stage-apk.sh output> \
-        --mozglue   <firefox-atl payload-arm64/mozglue/libmozglue.so> \
-        --megazord  <jvm-run/arm64/build-megazord-arm64.sh output>
+`.github/workflows/payload.yml` runs the whole sequence on an ordinary x86_64
+runner and publishes the tarball; `gecko/README.md` is the same sequence by
+hand. `megazord.yml` builds the one native Mozilla does not publish for this
+target, on an arm64 runner, a few times a year.
 
-Upload each with `gh release create <tag> dist/<file> dist/<file>.sha256`, then
-point `build.sh`'s default tag at it.
+Upload anything built by hand with `gh release create <tag> dist/<file>
+dist/<file>.sha256`, then point `build.sh`'s default tag at it — the payload
+workflow can open that bump as a PR itself.
 
 For local iteration neither has to be published: `FENIX_SYSROOT_DIR` and
 `FENIX_PAYLOAD_DIR` name unpacked trees and are used as-is.
