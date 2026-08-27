@@ -57,10 +57,13 @@ payload's `gecko/` outside it:
     ./stage-gecko.sh --objdir gecko-src/obj-atl-glibc-arm64 --out build/gecko
     ./build-mozglue.sh --objdir gecko-src/obj-atl-glibc-arm64 --out build/mozglue/libmozglue.so
 
-**4. Fenix.** Gradle, in the same tree, against the same objdir:
+**4. Fenix.** Gradle, in the same tree. `settings.gradle` finds the objdir by
+running `./mach environment`, which is why this takes the mozconfig and not a
+path:
 
     JAVA_HOME=<a JDK 17> ANDROID_SDK_ROOT=<an SDK> \
-      fenix/build-classpath.sh --src gecko-src --objdir gecko-src/obj-atl-glibc-arm64 \
+      fenix/build-classpath.sh --src gecko-src \
+                               --mozconfig gecko-src/mozconfig-atl-glibc-arm64 \
                                --out build/fenix
     fenix/stage-apk.sh --apk-dir build/fenix/apk \
                        --omni gecko-src/obj-atl-glibc-arm64/dist/bin/assets/omni.ja \
@@ -84,6 +87,11 @@ payload build downloads:
 
     APPSERVICES=<checkout> megazord/build-nss.sh          # ~40 min
     APPSERVICES=<checkout> megazord/build-megazord.sh     # ~3 min
+
+`megazord.yml` runs these on an `ubuntu-24.04-arm` runner, where nothing is
+cross: the triplet-prefixed compilers the scripts ask for are the host's own and
+libz comes from apt. The same scripts cross-build on x86_64 with
+`CC_CROSS=aarch64-linux-gnu-gcc-14` and an aarch64 `SYSLIBS`.
 
 `MEGAZORD_REF` pointing at Mozilla's published x86_64 build turns on the check
 that matters — the uniffi symbol sets have to be equal, or the Kotlin
