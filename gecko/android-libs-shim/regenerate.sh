@@ -1,10 +1,10 @@
 #!/bin/bash
 # Regenerate the route-B NDK link shim.
 #
-# Compiling against the NDK headers is only half of B4: libxul also has to
+# Compiling against the NDK headers is only half of it: libxul also has to
 # *link*.  On Android the NDK sysroot supplies liblog, libandroid, libmediandk
 # and libjnigraphics; here they have to be assembled by hand.  This directory
-# is handed to the linker with -L (see mozconfig-route-b).
+# is handed to the linker with -L (see mozconfig-atl-glibc).
 #
 #   liblog.so        a forwarder: dlsym the runtime's __android_log_vprint,
 #                    stderr if it is not there.  Linking ART's own liblog does

@@ -165,7 +165,7 @@ jobs:
 
       - name: Build the Fenix class path
         run: |
-          export JAVA_HOME=$(echo "$MOZBUILD_STATE_PATH"/jdk/jdk-17*)
+          export JAVA_HOME=$(ls -d "$MOZBUILD_STATE_PATH"/jdk/jdk-17* | tail -1)
           export ANDROID_SDK_ROOT=$MOZBUILD_STATE_PATH/android-sdk-linux
           gecko/fenix/build-classpath.sh --src gecko-src \
             --mozconfig "$MOZCONFIG" --out build/fenix

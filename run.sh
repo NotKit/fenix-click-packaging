@@ -1,6 +1,6 @@
 #!/bin/sh
 # Device launcher: Fenix on the bundled OpenJDK 21 through atlas's HotSpot
-# launcher, with Gecko (route B, a glibc libxul) behind it.
+# launcher, with Gecko (a glibc libxul) behind it.
 #
 # The package directory is READ-ONLY on Ubuntu Touch. Everything this run
 # writes -- the AppCDS archive, the class-path symlink farm, the JVM's error

@@ -6,18 +6,14 @@
 #                           --megazord FILE [--mozglue FILE] [--version STR] \
 #                           [--out FILE]
 #
-# The four inputs come from the **firefox-atl** working tree, which is where
-# they are built and documented; none of them can be produced inside a click
-# build container, and mozilla-central is far too large to make a submodule of.
+# The four inputs are built by ../gecko, which documents each one; none of them
+# can be produced inside a click build container, and mozilla-central is far too
+# large to make a submodule of.
 #
-#   --gecko      the staged route-B Gecko tree for aarch64: libxul.so, the NSS
-#                set and dist/bin's chrome/, components/, modules/ ...
-#                (firefox-atl payload-arm64/gecko, from
-#                route-b-run/stage-arm64-payload.sh).
-#   --mozglue    libmozglue.so, which the device payload keeps in a directory of
-#                its own beside gecko/ because the ART vehicle loads it out of
-#                atlas's natives dir (firefox-atl payload-arm64/mozglue,
-#                produced by route-b-run/install-mozglue.sh). It is put INTO
+#   --gecko      the staged Gecko tree for aarch64: libxul.so, the NSS set and
+#                dist/bin's chrome/, components/, modules/ ...
+#                (gecko/stage-gecko.sh).
+#   --mozglue    libmozglue.so (gecko/build-mozglue.sh).  It is put INTO
 #                gecko/ here: GeckoLoader putenvs MOZ_ANDROID_LIBDIR from
 #                wherever it found libmozglue, and APKOpen then dlopens
 #                libnss3, libnspr4, libplc4 and libmozsqlite3 out of that same
@@ -26,13 +22,13 @@
 #                carries beside it. Defaults to gecko/libmozglue.so if it is
 #                already there.
 #   --classpath  the ~360 jars Fenix compiles to for a JVM class path
-#                (firefox-atl jvm-run/fenixbuild/build-fenix-classes.sh).
+#                (gecko/fenix/build-classpath.sh).
 #   --apk        the resource container: the Gradle APK with the objdir's
-#                omni.ja put back in (jvm-run/fenixbuild/stage-apk.sh). Its dex
+#                omni.ja put back in (gecko/fenix/stage-apk.sh). Its dex
 #                and its lib/ are inert on a JVM class path; atlas needs it for
 #                the binary AndroidManifest and resources.arsc.
-#   --megazord   libmegazord.so cross-built for aarch64 (jvm-run/arm64/
-#                build-megazord-arm64.sh). appservices publishes linux-x86-64
+#   --megazord   libmegazord.so built for aarch64 (gecko/megazord/
+#                build-megazord.sh). appservices publishes linux-x86-64
 #                and darwin only.
 #
 # Everything here is architecture-correct or architecture-independent; the

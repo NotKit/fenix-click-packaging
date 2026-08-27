@@ -94,3 +94,31 @@ that matters — the uniffi symbol sets have to be equal, or the Kotlin
 `fenix-jvm-sysroot-arm64.tar.zst` — `scripts/make-sysroot.sh` — needs an arm64
 `art_standalone` build and a skia checkout. It changes rarely and is made by
 hand; see the main README.
+
+## In CI
+
+`.github/workflows/payload.yml` is the sequence above, on `ubuntu-24.04`.
+It is `workflow_dispatch` (with the Gecko ref as an input) plus a
+`repository_dispatch` of type `gecko-push`, so a push to the Gecko branch can
+start a build with no commit here. To wire that up, a workflow in the Gecko fork
+needs a token that can dispatch into this repository:
+
+    - run: gh api repos/NotKit/fenix-click-packaging/dispatches \
+             -f event_type=gecko-push -F client_payload[ref]="$GITHUB_REF_NAME"
+      env: { GH_TOKEN: "${{ secrets.PACKAGING_DISPATCH_TOKEN }}" }
+
+Two assets have to exist before the first payload build, because it downloads
+rather than builds them:
+
+* `atlas-libandroid-arm64.so` — published by the click build (`build.yml`), so
+  one click build has to have run.
+* `libmegazord-arm64.so` — published by `megazord.yml`, which is dispatch-only.
+
+Both are found by scanning releases for the asset name, newest first, so no tag
+has to be pinned.
+
+The build is what it is: several hours cold on a 4-core runner. Three caches
+(toolchains, ccache, Gradle) share the repository's 10 GB Actions cache budget,
+and `--disable-debug-symbols` is set only in CI — the staged payload has no
+debug sections anyway, so building them would cost an hour and most of the disk
+for nothing.

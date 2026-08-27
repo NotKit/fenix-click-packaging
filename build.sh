@@ -17,7 +17,7 @@
 #                              built: art_standalone's libandroidfw and friends
 #                              plus their headers, ART's boot jars, GLFW and a
 #                              prebuilt libskia.so. See scripts/make-sysroot.sh.
-#   payload tarball            Gecko (route B: a glibc libxul for aarch64),
+#   payload tarball            Gecko (a glibc libxul for aarch64),
 #                              Fenix's class path, the resource APK and the
 #                              aarch64 megazord. See scripts/make-payload.sh.
 #   container                  the arm64 OpenJDK 21, jlinked into jvm/.

@@ -46,6 +46,11 @@ done
 [ -n "$MOZCONFIG_FILE" ] || { echo "missing --mozconfig" >&2; exit 2; }
 [ -f "$MOZCONFIG_FILE" ] || { echo "no $MOZCONFIG_FILE" >&2; exit 1; }
 [ -x "$SRC/gradlew" ] || { echo "no $SRC/gradlew" >&2; exit 1; }
+# Absolute, both of them: Gradle runs with the Gecko tree as its working
+# directory, and jvm.gradle resolves FENIX_JVM_OUT from wherever it is.
+SRC="$(cd "$SRC" && pwd)"
+mkdir -p "$OUT"; OUT="$(cd "$OUT" && pwd)"
+MOZCONFIG_FILE="$(cd "$(dirname "$MOZCONFIG_FILE")" && pwd)/$(basename "$MOZCONFIG_FILE")"
 [ -n "${JAVA_HOME:-}" ] || { echo "set JAVA_HOME to a JDK 17" >&2; exit 1; }
 [ -n "${ANDROID_SDK_ROOT:-}" ] || { echo "set ANDROID_SDK_ROOT" >&2; exit 1; }
 export ANDROID_HOME="$ANDROID_SDK_ROOT"
