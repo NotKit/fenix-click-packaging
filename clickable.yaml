@@ -1,0 +1,71 @@
+clickable_minimum_required: 8.3.0
+
+# Ubuntu Touch 24.04 (glibc 2.39, arm64). The click bundles an arm64 OpenJDK 21,
+# the atlas framework natives and a route-B Gecko, so it is arm64-only.
+framework: ubuntu-touch-24.04-1.x
+restrict_arch: arm64
+
+builder: custom
+build: ${ROOT}/build.sh
+
+# The launcher process to stop on install or redeploy.
+kill: android-translation-layer-hotspot
+
+# Cross container: aarch64-linux-gnu-gcc plus an arm64 target sysroot. Nothing
+# is built by an emulated arm64 toolchain -- there is no art_standalone in this
+# vehicle, which is the only thing that forced the ART packaging to build
+# natively under qemu.
+dependencies_host:
+  - ca-certificates-java
+  - curl
+  - file
+  - git
+  - meson
+  - ninja-build
+  - openjdk-21-jdk-headless
+  - pkg-config
+  - python-is-python3
+  - python3
+  - rsync
+  - unzip
+  - xz-utils
+  - zip
+  - zstd
+
+dependencies_target:
+  # atlas: libtranslation_layer_main.so and libandroid.so.0
+  - libasound2-dev
+  - libavcodec-dev
+  - libswscale-dev
+  - libdrm-dev
+  - libegl-dev
+  - libgl-dev
+  - libgles-dev
+  - libglib2.0-dev
+  - libgraphene-1.0-dev
+  - libgstreamer1.0-dev
+  - libgstreamer-plugins-base1.0-dev
+  - libgudev-1.0-dev
+  - libportal-dev
+  - libsqlite3-dev
+  - libvulkan-dev
+  - libwayland-dev
+  - wayland-protocols
+  - libfontconfig-dev
+  - libxkbcommon-dev
+  - libgbm-dev
+  - libicu-dev
+  - libopenxr-dev
+  # the soft keyboard: atlas's maliit input-method backend is optional in meson,
+  # so without this it is silently not built and nothing can be typed
+  - libmaliit-glib-dev
+  # skia is prebuilt (-Dskia-prebuilt), but its headers pull these in
+  - libexpat1-dev
+  - libfreetype-dev
+  - libharfbuzz-dev
+  - libpng-dev
+  - libwebp-dev
+  - zlib1g-dev
+  # the arm64 JVM the click bundles: jni.h and libjvm.so to link the launcher
+  # against, and the jmods jlink builds the shipped image from
+  - openjdk-21-jdk-headless

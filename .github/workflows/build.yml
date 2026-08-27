@@ -1,0 +1,99 @@
+name: Build click package
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      follow_branch:
+        description: "Move submodules to their branch tips before building"
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    # An ordinary x86_64 runner: this is a CROSS build. There is no
+    # art_standalone here, and art_standalone is the only piece that has to be
+    # built natively -- which is why the sibling ART packaging needs an arm64
+    # runner and hours, and this needs neither.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    env:
+      CLICKABLE_NON_INTERACTIVE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Submodules are pinned to a branch (see .gitmodules). A plain checkout
+      # gets the recorded commit; this moves them to the branch tip, so a push
+      # to atl-touch is tested here without a bump commit first. Set the
+      # workflow_dispatch input to false, or push with the recorded commit, to
+      # reproduce an older build exactly.
+      - name: Follow submodule branches
+        if: github.event_name != 'workflow_dispatch' || inputs.follow_branch
+        run: |
+          git submodule update --init --remote --recursive
+          git submodule status
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/.ghcup /usr/local/share/boost || true
+          df -h /
+
+      # The sysroot and payload tarballs are the expensive downloads (the
+      # payload is most of a gigabyte). Keyed by the tags build.sh pins, so a
+      # bump fetches a new one instead of reusing a stale entry.
+      - name: Restore download cache
+        uses: actions/cache/restore@v4
+        with:
+          path: build/aarch64-linux-gnu/app/downloads
+          key: fenix-click-dl-${{ hashFiles('build.sh') }}
+          restore-keys: fenix-click-dl-
+
+      - name: Install clickable
+        run: pipx install clickable-ut
+
+      - name: Build
+        run: clickable build --arch arm64 --skip-review --verbose
+
+      - name: Save download cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build/aarch64-linux-gnu/app/downloads
+          key: fenix-click-dl-${{ hashFiles('build.sh') }}
+
+      - name: Upload click package
+        uses: actions/upload-artifact@v4
+        with:
+          name: fenix-click-arm64
+          path: build/aarch64-linux-gnu/app/*.click
+          if-no-files-found: error
+
+      # Actions artifacts need a GitHub login; a release does not. Tagged by the
+      # package version and the atl-touch commit that built it, so two clicks
+      # from the same payload but different atlas revisions are distinguishable.
+      - name: Publish to GitHub release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          click=$(ls build/aarch64-linux-gnu/app/*.click)
+          # clickable names it <package>_<version>_<arch>.click
+          version=$(basename "$click" | cut -d_ -f2)
+          atl_sha=$(git -C atl-touch rev-parse --short HEAD)
+          tag="v${version}-atl.${atl_sha}"
+          echo "publishing $click as $tag"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$click" --clobber
+          else
+            gh release create "$tag" "$click" \
+              --title "Firefox (Fenix) ${version} — atl-touch ${atl_sha}" \
+              --prerelease \
+              --notes "Unofficial test build of Firefox for Android (Fenix) for Ubuntu Touch 24.04 (arm64), running on OpenJDK 21 through the Android Translation Layer, atlas commit \`${atl_sha}\`. Not a stable release — for testing only."
+          fi

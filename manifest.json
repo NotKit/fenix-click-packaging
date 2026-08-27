@@ -1,0 +1,15 @@
+{
+    "name": "fenix.thekit",
+    "description": "Firefox for Android (Fenix) on OpenJDK, with Gecko built natively for glibc",
+    "architecture": "@CLICK_ARCH@",
+    "title": "Firefox (Fenix)",
+    "hooks": {
+        "fenix": {
+            "apparmor": "fenix.apparmor",
+            "desktop": "fenix.desktop"
+        }
+    },
+    "version": "@CLICK_VERSION@",
+    "maintainer": "Nikita Ukhrenkov <nikita.ukhrenkov@volla.online>",
+    "framework": "@CLICK_FRAMEWORK@"
+}

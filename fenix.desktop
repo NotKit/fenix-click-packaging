@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Firefox (Fenix)
+Comment=Firefox for Android on OpenJDK via the Android Translation Layer
+Exec=run.sh %u
+Icon=fenix.svg
+Terminal=false
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;
+X-Ubuntu-Touch=true
+X-Lomiri-Touch=true

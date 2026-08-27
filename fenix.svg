@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fennec on Ubuntu Touch.
+
+     The geometry follows the Fennec F-Droid launcher icon: an origami
+     fennec-fox face, two ears meeting in a notch above a kite muzzle whose
+     tip is carried by the nose. That icon is F-Droid's own community
+     artwork, not Mozilla's logo or wordmark, so nothing trademarked is
+     reproduced here.
+
+     The treatment is Suru rather than the reference's: one flat circle with
+     a vertical gradient and one solid white glyph, in the same 108x108 box
+     the other clicks in this family use. The reference's two-tone facet is
+     dropped on purpose, because at launcher size on a warm field it reads as
+     a smudge rather than as a plane. Corners come from a same-colour stroke
+     with a round linejoin instead of hand-fitted curves. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="108" height="108" viewBox="0 0 108 108">
+  <defs>
+    <linearGradient id="bg" x1="54" y1="0" x2="54" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFA83D"/>
+      <stop offset="1" stop-color="#E85D18"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="54" cy="54" r="54" fill="url(#bg)"/>
+
+  <path d="M21.5,26 L21,60.2 L54,83.6 L87,60.2 L86.5,26 L54,46.4 Z"
+        fill="#ffffff" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+
+  <circle cx="44.2" cy="64.6" r="3.6" fill="#3B3226"/>
+  <circle cx="64.2" cy="64.6" r="3.6" fill="#3B3226"/>
+  <circle cx="54" cy="79.8" r="4.8" fill="#3B3226"/>
+</svg>

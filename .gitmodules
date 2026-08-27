@@ -1,0 +1,13 @@
+# Submodules are pinned to a *branch*, not just to the recorded commit: this
+# packaging follows atl-touch's tip rather than trailing behind it.
+#
+#   git submodule update --init --remote      # move to the branch tip
+#   git submodule update --init               # go back to the recorded commit
+#
+# The recorded gitlink still exists (git has no branch-only submodules) and is
+# what a plain checkout gets; CI re-runs --remote so a build always tests the
+# branch tip. See README.md, "Building".
+[submodule "atl-touch"]
+	path = atl-touch
+	url = https://github.com/NotKit/atl-touch.git
+	branch = master
