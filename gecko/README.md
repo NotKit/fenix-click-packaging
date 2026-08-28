@@ -44,12 +44,24 @@ rebuilding it is deliberate: the shim then measures the same atlas the click
 ships, and the gap list cannot drift from it. The gap comes out at 283 entry
 points; `ndk-gap.txt` is byte-identical between x86_64 and arm64.
 
-**2. Gecko.**
+**2. Gecko.** `rustup target add aarch64-unknown-linux-gnu` first, if the
+toolchain has no std for it -- configure fails at "checking for rust target
+triplet" without one.
 
     cd gecko-src
     . ./atl-glibc-env.sh
     export MOZCONFIG=$PWD/mozconfig-atl-glibc-arm64 ATL_SHIM_DIR=<this directory>
     ./mach build
+
+`mach build` ends by failing in `android-stage-package`:
+
+    error: mobile/android/installer/package-manifest.in:66: Missing file(s): bin/libmozglue.so
+
+That is expected and not fatal here. `MOZ_FOLD_LIBS` is empty in this
+configuration, so `dist/bin` has no `libmozglue.so` -- step 3 relinks it -- and
+`package-manifest.in` also wants the crash reporter and clearkey libraries this
+build does not produce. Everything the payload needs is built before the
+packager runs; CI checks for those outputs rather than for a zero exit code.
 
 **3. Stage it.** Writes `omni.ja` into the objdir (step 4 needs it) and the
 payload's `gecko/` outside it:

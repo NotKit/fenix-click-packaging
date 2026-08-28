@@ -159,9 +159,30 @@ jobs:
       # steps run, and the ccache save below is what makes the next attempt
       # cheaper.  This way a build that does not fit still leaves its compiler
       # cache behind, and the retry starts from it.
+      #
+      # The default target ends in android-stage-package, which cannot succeed
+      # in this configuration: MOZ_FOLD_LIBS is empty, so dist/bin has no
+      # libmozglue.so -- build-mozglue.sh relinks it afterwards -- and
+      # package-manifest.in requires it, along with the crash reporter and
+      # clearkey libraries this build does not produce either.  Everything the
+      # payload needs is built by then, so the packager's exit code is not the
+      # question; whether those outputs are there is.
       - name: Build Gecko
         timeout-minutes: 280
-        run: cd gecko-src && ./mach build
+        run: |
+          cd gecko-src
+          set +e; ./mach build; rc=$?; set -e
+          missing=0
+          for f in libxul.so libnss3.so libmozsqlite3.so chrome.manifest \
+                   modules components chrome arm64-v8a/greprefs.js; do
+            [ -e "$OBJDIR/dist/bin/$f" ] || { echo "missing dist/bin/$f"; missing=1; }
+          done
+          if [ "$missing" != 0 ]; then
+            echo "mach build exited $rc and the payload's inputs are not there" >&2
+            exit "${rc:-1}"
+          fi
+          [ "$rc" = 0 ] ||
+            echo "::notice::mach build exited $rc -- expected, android-stage-package cannot run here; every payload input is present"
 
       - name: Save toolchain cache
         if: always() && steps.mozbuild-cache.outputs.cache-hit != 'true'
