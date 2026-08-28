@@ -146,9 +146,16 @@ jobs:
           SYSROOT="$MOZBUILD_STATE_PATH/sysroot-aarch64-linux-gnu" \
             ./regenerate.sh
 
+      # A step timeout and not just the job's: when a *job* times out no further
+      # steps run, and the ccache save below is what makes the next attempt
+      # cheaper.  This way a build that does not fit still leaves its compiler
+      # cache behind, and the retry starts from it.
       - name: Build Gecko
+        timeout-minutes: 280
         run: cd gecko-src && ./mach build
 
+      # always(): also after the build step timed out or failed, which is the
+      # case it exists for.
       - name: Save compiler cache
         if: always()
         uses: actions/cache/save@v4
