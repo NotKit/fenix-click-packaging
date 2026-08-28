@@ -37,10 +37,15 @@ done
 [ -n "$OMNI" ] || { echo "missing --omni" >&2; exit 2; }
 [ -f "$OMNI" ] || { echo "no $OMNI -- run stage-gecko.sh first" >&2; exit 1; }
 
+# Absolute: the last zip below runs inside a temporary directory, and a
+# relative --out would be created there and lost.
+mkdir -p "$(dirname "$OUT")"
+OUT="$(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT")"
+OMNI="$(cd "$(dirname "$OMNI")" && pwd)/$(basename "$OMNI")"
+
 IN=$(find "$APK_DIR" -maxdepth 1 \( -name "*-${ABI}-*.apk" -o -name "*-${ABI}.apk" \) | head -1)
 [ -n "$IN" ] || { echo "no $ABI apk in $APK_DIR" >&2; exit 1; }
 
-mkdir -p "$(dirname "$OUT")"
 rm -f "$OUT"
 cp "$IN" "$OUT"
 zip -q -d "$OUT" assets/omni.ja >/dev/null 2>&1 || true

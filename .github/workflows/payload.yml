@@ -84,14 +84,16 @@ jobs:
           key: ccache-${{ github.run_id }}
           restore-keys: ccache-
 
+      # Rolling key, like ccache: a fixed key saved only on a miss would pin
+      # whatever the first run happened to leave behind -- including the empty
+      # cache of a run that failed before Gradle ever started.
       - name: Restore Gradle cache
-        id: gradle-cache
         uses: actions/cache/restore@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-v1
+          key: gradle-${{ github.run_id }}
           restore-keys: gradle-
 
       - name: Bootstrap
@@ -176,13 +178,13 @@ jobs:
             echo "::notice::mach build exited $rc -- expected, android-stage-package cannot run here; every payload input is present"
 
       - name: Save Gradle cache
-        if: always() && steps.gradle-cache.outputs.cache-hit != 'true'
+        if: always()
         uses: actions/cache/save@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-v1
+          key: gradle-${{ github.run_id }}
 
       # always(): also after the build step timed out or failed, which is the
       # case it exists for.
