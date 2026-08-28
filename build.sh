@@ -68,9 +68,9 @@ done_stamp() { touch "$STAMPS/$1.done"; }
 # instead, which is how a local build iterates without publishing anything.
 FENIX_ASSET_REPO="${FENIX_ASSET_REPO:-NotKit/fenix-click-packaging}"
 FENIX_SYSROOT_TAG="${FENIX_SYSROOT_TAG:-sysroot-1}"
-FENIX_PAYLOAD_TAG="${FENIX_PAYLOAD_TAG:-payload-1}"
+FENIX_PAYLOAD_TAG="${FENIX_PAYLOAD_TAG:-payload-20260828-g63b40298176b}"
 FENIX_SYSROOT_SHA256="${FENIX_SYSROOT_SHA256:-}"
-FENIX_PAYLOAD_SHA256="${FENIX_PAYLOAD_SHA256:-}"
+FENIX_PAYLOAD_SHA256="${FENIX_PAYLOAD_SHA256:-ab6c450d7c095ca3b233ed56bc6383f6ab2447e98eaad889f1842b6f21d4d1e4}"
 
 # JNA ships the desktop natives the class path's own jar (an AAR classes.jar)
 # does not carry. The version must be the one the class path was built against.
