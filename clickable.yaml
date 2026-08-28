@@ -16,6 +16,11 @@ kill: android-translation-layer-hotspot
 # vehicle, which is the only thing that forced the ART packaging to build
 # natively under qemu.
 dependencies_host:
+  # ant: atlas compiles hax.jar with one javac call through src/api-impl/
+  # build.xml when ant is present, and falls back to meson's own jar(), which
+  # is one javac invocation per source file -- 966 of them, 45 minutes, and
+  # the whole cost of a cold build.
+  - ant
   - ca-certificates-java
   - curl
   - file
