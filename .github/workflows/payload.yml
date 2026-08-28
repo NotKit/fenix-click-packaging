@@ -130,17 +130,21 @@ jobs:
             >> "$GITHUB_ENV"
 
       # The link shim is per-architecture because it names the translation
-      # layer's own libandroid.so.0, and that library comes from the click build
-      # -- the same atlas the click ships, so the two cannot drift.
+      # layer's own libandroid.so.0. It comes from the same SDK tarball the
+      # click is assembled from -- build.sh pins the tag -- so the shim measures
+      # exactly the atlas the click ships and the gap list cannot drift from it.
       - name: Link shim
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
-                --jq '[.[] | select(.assets[]?.name=="atlas-libandroid-arm64.so")][0].tag_name')
-          [ -n "$tag" ] || { echo "no click release carries atlas-libandroid-arm64.so" >&2; exit 1; }
-          echo "libandroid from $tag"
-          gh release download "$tag" -p atlas-libandroid-arm64.so -D gecko/
+          # build.sh is the single place the SDK is pinned; read it rather than
+          # keeping a second copy of the tag here.
+          eval "$(grep -E '^FENIX_SDK_(TAG|REPO)=' build.sh)"
+          echo "libandroid from $FENIX_SDK_REPO $FENIX_SDK_TAG"
+          mkdir -p build/sdk
+          gh release download "$FENIX_SDK_TAG" -R "$FENIX_SDK_REPO" -p "atl-sdk-arm64.tar.zst" -D build
+          tar -I zstd -xf build/atl-sdk-arm64.tar.zst -C build/sdk --wildcards '*libandroid.so.0'
+          cp "$(find build/sdk -name libandroid.so.0 | head -1)" gecko/atlas-libandroid-arm64.so
           cd gecko/android-libs-shim
           OUTDIR=../android-libs-shim-arm64 \
           ATL_LIBANDROID="$GITHUB_WORKSPACE/gecko/atlas-libandroid-arm64.so" \

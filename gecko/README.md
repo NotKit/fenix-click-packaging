@@ -38,11 +38,11 @@ translation layer's own `libandroid.so.0`:
       SYSROOT=$HOME/.mozbuild/sysroot-aarch64-linux-gnu \
       ./regenerate.sh
 
-That library is published as a release asset by the click build, which builds
-atlas anyway (`atlas-libandroid-arm64.so`). Taking it from there rather than
-rebuilding it is deliberate: the shim then measures the same atlas the click
-ships, and the gap list cannot drift from it. The gap comes out at 283 entry
-points; `ndk-gap.txt` is byte-identical between x86_64 and arm64.
+That library comes out of the same SDK tarball the click is assembled from —
+`usr/lib/libandroid.so.0` of the `sdk-<sha>` release `build.sh` pins — so the
+shim measures exactly the atlas the click ships and the gap list cannot drift
+from it. The gap comes out at 283 entry points; `ndk-gap.txt` is byte-identical
+between x86_64 and arm64.
 
 **2. Gecko.** `rustup target add aarch64-unknown-linux-gnu` first, if the
 toolchain has no std for it -- configure fails at "checking for rust target
@@ -111,9 +111,10 @@ that matters — the uniffi symbol sets have to be equal, or the Kotlin
 
 ## What is not built here
 
-`fenix-jvm-sysroot-arm64.tar.zst` — `scripts/make-sysroot.sh` — needs an arm64
-`art_standalone` build and a skia checkout. It changes rarely and is made by
-hand; see the main README.
+atlas and its native chain. That is `atl-sdk-arm64.tar.zst`, built by
+atl-touch's own CI (`ci/build-sdk.sh`) on a native arm64 runner and pinned by
+`build.sh`; this directory only borrows its `libandroid.so.0` for the link
+shim.
 
 ## In CI
 
@@ -130,8 +131,8 @@ needs a token that can dispatch into this repository:
 Two assets have to exist before the first payload build, because it downloads
 rather than builds them:
 
-* `atlas-libandroid-arm64.so` — published by the click build (`build.yml`), so
-  one click build has to have run.
+* the `atl-sdk-arm64.tar.zst` of the SDK tag `build.sh` pins — published by
+  atl-touch's own CI.
 * `libmegazord-arm64.so` — published by `megazord.yml`, which is dispatch-only.
 
 Both are found by scanning releases for the asset name, newest first, so no tag

@@ -11,24 +11,17 @@ build: ${ROOT}/build.sh
 # The launcher process to stop on install or redeploy.
 kill: android-translation-layer-hotspot
 
-# Cross container: aarch64-linux-gnu-gcc plus an arm64 target sysroot. Nothing
-# is built by an emulated arm64 toolchain -- there is no art_standalone in this
-# vehicle, which is the only thing that forced the ART packaging to build
-# natively under qemu.
+# Almost nothing is built here: atlas and its native chain arrive as the SDK
+# tarball atl-touch's CI publishes, and Gecko as the payload tarball. What is
+# left is shim.jar (javac), libportshim.so (one C file) and the jlinked JVM.
+# The target -dev packages stay: the click bundles every library the device
+# does not ship, and they are where those come from.
 dependencies_host:
-  # ant: atlas compiles hax.jar with one javac call through src/api-impl/
-  # build.xml when ant is present, and falls back to meson's own jar(), which
-  # is one javac invocation per source file -- 966 of them, 45 minutes, and
-  # the whole cost of a cold build.
-  - ant
   - ca-certificates-java
   - curl
   - file
   - git
-  - meson
-  - ninja-build
   - openjdk-21-jdk-headless
-  - pkg-config
   - python-is-python3
   - python3
   - rsync

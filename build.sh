@@ -1,27 +1,32 @@
 #!/bin/bash
 # Custom clickable builder for the Ubuntu Touch click of Fenix on OpenJDK.
 #
-# Runs inside a CROSS clickable container (amd64 host toolchain, aarch64 target
-# sysroot). Nothing is compiled by an emulated arm64 toolchain, which is what
-# keeps a rebuild in minutes rather than hours -- there is no art_standalone to
-# build here, because this vehicle runs the app on a stock JVM, not on ART.
+# Runs inside a clickable container, and compiles almost nothing: the two big
+# inputs are prebuilt tarballs, so a rebuild is minutes.
 #
 # Where each piece comes from:
 #
-#   built here, arm64          atlas (the HotSpot launcher, libtranslation_layer
-#                              _main.so, libandroid.so.0) from the atl-touch
-#                              submodule; libportshim.so from shim/
-#   built here, portable       hax.jar and framework-res.apk (javac and aapt are
-#                              host tools) and shim.jar
-#   sysroot tarball            what atlas links against and cannot be cross-
-#                              built: art_standalone's libandroidfw and friends
-#                              plus their headers, ART's boot jars, GLFW and a
-#                              prebuilt libskia.so. See scripts/make-sysroot.sh.
+#   SDK tarball                atlas itself -- the HotSpot launcher,
+#                              libtranslation_layer_main.so, libandroid.so.0,
+#                              api-impl_classes.jar, framework-res.apk, the
+#                              Roboto faces -- plus everything it links that
+#                              Ubuntu Touch does not ship: art_standalone's
+#                              libandroidfw and friends, GLFW 3.4 and libskia.
+#                              Built by atl-touch's own CI (ci/build-sdk.sh) on
+#                              a native arm64 runner and published per commit.
 #   payload tarball            Gecko (a glibc libxul for aarch64),
 #                              Fenix's class path, the resource APK and the
 #                              aarch64 megazord. See scripts/make-payload.sh.
+#   built here                 shim.jar and libportshim.so, from shim/.
 #   container                  the arm64 OpenJDK 21, jlinked into jvm/.
 #   fetched                    JNA's linux-aarch64 libjnidispatch.so.
+#
+# The framework jar is api-impl_classes.jar and NOT the api-impl.jar beside it
+# under lib/java/dex: that one is the same classes run through d8 and holds
+# nothing but a classes.dex, which HotSpot cannot read. It is also the
+# unstripped jar -- the stripped one drops three compile-only stubs because ART
+# rejects a class defined twice, and Fenix's own activity needs one of them
+# (OnBackInvokedCallback) at load time.
 #
 # Every stage is stamped in $BUILD_DIR/stamps, so a re-run only redoes what
 # changed, and the stamps carry the input's revision or checksum so a stale CI
@@ -41,14 +46,12 @@ HOOK="fenix"
 	{ echo "this package is arm64 only (ARCH=$ARCH)" >&2; exit 1; }
 
 TRIPLE="aarch64-linux-gnu"
-STAGE="$BUILD_DIR/stage"
-PREFIX="$STAGE/usr"              # build-time sysroot for atlas
 DL="$BUILD_DIR/downloads"
 STAMPS="$BUILD_DIR/stamps"
 OUT="$BUILD_DIR/out"             # what this build produces, before assembly
-SYSROOT_DIR="$BUILD_DIR/sysroot" # unpacked sysroot tarball
+SDK_DIR="$BUILD_DIR/sdk"         # unpacked SDK tarball (atlas + its runtime)
 PAYLOAD_DIR="$BUILD_DIR/payload" # unpacked payload tarball
-mkdir -p "$PREFIX" "$DL" "$STAMPS" "$OUT"
+mkdir -p "$DL" "$STAMPS" "$OUT"
 
 log()        { echo -e "\033[1;34m[fenix-click]\033[0m $*"; }
 stamp()      { [ -f "$STAMPS/$1.done" ]; }
@@ -56,20 +59,24 @@ done_stamp() { touch "$STAMPS/$1.done"; }
 
 # --- pinned inputs ----------------------------------------------------------
 
-# The two tarballs this package cannot build itself. Both are GitHub release
-# assets of this repository; scripts/make-sysroot.sh and scripts/make-payload.sh
-# produce them, README.md says from what.
+# The two tarballs this package does not build itself.
 #
-#   FENIX_SYSROOT_TAG / FENIX_PAYLOAD_TAG   the release tag to use
-#   FENIX_SYSROOT_SHA256 / FENIX_PAYLOAD_SHA256   optional, verified when set
-#   FENIX_ASSET_REPO                        where to fetch them from
+#   the SDK      atlas and its native chain, a release asset of NotKit/atl-touch
+#                (its ci/build-sdk.sh builds it on a native arm64 runner)
+#   the payload  Gecko and Fenix's class path, a release asset of this
+#                repository (.github/workflows/payload.yml, scripts/make-payload.sh)
 #
-# A directory named by FENIX_SYSROOT_DIR / FENIX_PAYLOAD_DIR is used as-is
-# instead, which is how a local build iterates without publishing anything.
+#   FENIX_SDK_TAG / FENIX_PAYLOAD_TAG           the release tag to use
+#   FENIX_SDK_SHA256 / FENIX_PAYLOAD_SHA256     optional, verified when set
+#   FENIX_SDK_REPO / FENIX_ASSET_REPO           where to fetch each from
+#
+# A directory named by FENIX_SDK_DIR / FENIX_PAYLOAD_DIR is used as-is instead,
+# which is how a local build iterates without publishing anything.
 FENIX_ASSET_REPO="${FENIX_ASSET_REPO:-NotKit/fenix-click-packaging}"
-FENIX_SYSROOT_TAG="${FENIX_SYSROOT_TAG:-sysroot-1}"
+FENIX_SDK_REPO="${FENIX_SDK_REPO:-NotKit/atl-touch}"
+FENIX_SDK_TAG="${FENIX_SDK_TAG:-sdk-1ed12f3}"
+FENIX_SDK_SHA256="${FENIX_SDK_SHA256:-fda3da9850c479e934ec9351ff55bbea9fb9b634ea963657f9e36ed55aae27f2}"
 FENIX_PAYLOAD_TAG="${FENIX_PAYLOAD_TAG:-payload-20260828-g63b40298176b}"
-FENIX_SYSROOT_SHA256="${FENIX_SYSROOT_SHA256:-}"
 FENIX_PAYLOAD_SHA256="${FENIX_PAYLOAD_SHA256:-ab6c450d7c095ca3b233ed56bc6383f6ab2447e98eaad889f1842b6f21d4d1e4}"
 
 # JNA ships the desktop natives the class path's own jar (an AAR classes.jar)
@@ -89,9 +96,8 @@ fetch() { # fetch <url> <outfile> [sha256]
 	mv "$out.tmp" "$out"
 }
 
-unpack_asset() { # unpack_asset <name> <tag> <sha256> <destdir> <marker>
-	local name="$1" tag="$2" sha="$3" dest="$4" marker="$5"
-	local file="fenix-jvm-${name}-${ARCH}.tar.zst"
+unpack_asset() { # unpack_asset <name> <repo> <file> <tag> <sha256> <destdir> <marker>
+	local name="$1" repo="$2" file="$3" tag="$4" sha="$5" dest="$6" marker="$7"
 	local archive="$DL/${tag}-${file}"
 	if [ ! -f "$archive" ]; then
 		local url="https://github.com/${FENIX_ASSET_REPO}/releases/download/${tag}/${file}"
@@ -99,7 +105,7 @@ unpack_asset() { # unpack_asset <name> <tag> <sha256> <destdir> <marker>
 		curl -Lf --retry 3 -o "$archive.tmp" "$url" || {
 			rm -f "$archive.tmp"
 			echo "cannot fetch $url" >&2
-			echo "publish it with scripts/make-${name}.sh, or point FENIX_$(echo "$name" | tr a-z A-Z)_DIR at a staged tree" >&2
+			echo "point FENIX_$(echo "$name" | tr a-z A-Z)_DIR at a staged tree to build without it" >&2
 			exit 1
 		}
 		mv "$archive.tmp" "$archive"
@@ -114,82 +120,32 @@ unpack_asset() { # unpack_asset <name> <tag> <sha256> <destdir> <marker>
 		{ echo "${name} tarball has no $marker" >&2; exit 1; }
 }
 
-# --- 1. the build-time sysroot ----------------------------------------------
-# atlas resolves art-standalone and glfw3 through pkg-config, links against the
-# staged .so files and compiles against their headers.
+# --- 1. the SDK: atlas and everything it links ------------------------------
+# Prebuilt by atl-touch's CI on a native arm64 runner. Nothing here is compiled
+# or configured -- the tree is unpacked and read.
 
-if [ -n "${FENIX_SYSROOT_DIR:-}" ]; then
-	log "sysroot: using $FENIX_SYSROOT_DIR"
-	SYSROOT_DIR="$FENIX_SYSROOT_DIR"
-	sysroot_id="local-$(sha256sum "$SYSROOT_DIR/PROVENANCE.md" 2>/dev/null | cut -c1-12)"
+if [ -n "${FENIX_SDK_DIR:-}" ]; then
+	log "sdk: using $FENIX_SDK_DIR"
+	SDK_DIR="$FENIX_SDK_DIR"
 else
-	sysroot_id="$FENIX_SYSROOT_TAG"
-	stamp "sysroot-$sysroot_id" ||
-		unpack_asset sysroot "$FENIX_SYSROOT_TAG" "${FENIX_SYSROOT_SHA256:-}" \
-			"$SYSROOT_DIR" "usr/lib/art/libandroidfw.so"
+	stamp "sdk-$FENIX_SDK_TAG" ||
+		unpack_asset sdk "$FENIX_SDK_REPO" "atl-sdk-${ARCH}.tar.zst" \
+			"$FENIX_SDK_TAG" "$FENIX_SDK_SHA256" \
+			"$SDK_DIR" "usr/lib/java/api-impl_classes.jar"
+	done_stamp "sdk-$FENIX_SDK_TAG"
 fi
 
-if ! stamp "prefix-$sysroot_id"; then
-	log "staging the build-time sysroot in $PREFIX"
-	rsync -a --delete-after "$SYSROOT_DIR/usr/" "$PREFIX/"
-
-	# art-standalone.pc puts -lart -lnativebridge on every link line that uses
-	# it. Nothing on this vehicle calls into either -- libtranslation_layer_main
-	# .so's DT_NEEDED are libandroidfw and liblog -- so an empty .so of each
-	# satisfies the linker and --as-needed drops it again, instead of carrying
-	# 240 MB of an ART this click will never load.
-	#
-	# The four bionic_translation names are the same story one step further:
-	# atlas's meson calls cc.find_library('c_bio'/'dl_bio') at configure time,
-	# and the HotSpot launcher's glibc_compat.c defines the handful of bionic_*
-	# symbols it actually needs itself.
-	mkdir -p "$PREFIX/lib/art"
-	for stub in art nativebridge; do
-		"$TRIPLE-gcc" -shared -o "$PREFIX/lib/art/lib$stub.so" -x c /dev/null
-	done
-	for stub in c_bio dl_bio; do
-		[ -e "$PREFIX/lib/lib$stub.so" ] ||
-			"$TRIPLE-gcc" -shared -o "$PREFIX/lib/lib$stub.so" -x c /dev/null
-	done
-
-	mkdir -p "$PREFIX/lib/pkgconfig"
-	cat >"$PREFIX/lib/pkgconfig/art-standalone.pc" <<EOF
-# Generated by build.sh for the arm64 cross build.
-prefix=$PREFIX
-libdir=\${prefix}/lib
-includedir=\${prefix}/include
-
-Name: art-standalone
-Description: ART support libraries (libandroidfw and its own; see PROVENANCE.md)
-Version: 0.0.0
-Libs: -L\${libdir}/art -lart -lnativebridge -landroidfw
-Cflags: -I\${includedir} -I\${includedir}/androidfw
-EOF
-	cat >"$PREFIX/lib/pkgconfig/glfw3.pc" <<EOF
-# Generated by build.sh for the arm64 cross build.
-prefix=$PREFIX
-libdir=\${prefix}/lib
-includedir=\${prefix}/include
-
-Name: GLFW
-Description: GLFW 3.4 (prebuilt; noble ships 3.3 and atlas needs the libdecor init hint)
-Version: 3.4
-Libs: -L\${libdir} -lglfw
-Cflags: -I\${includedir}
-EOF
-	# atlas's meson resolves `dx` as a program at configure time even though
-	# nothing on this vehicle dexes anything; it looks for dx.jar in
-	# ../framework relative to its own bin/ first.
-	if [ -f "$PREFIX/lib/java/dx.jar" ]; then
-		mkdir -p "$PREFIX/framework"
-		cp "$PREFIX/lib/java/dx.jar" "$PREFIX/framework/dx.jar"
-	fi
-	done_stamp "prefix-$sysroot_id"
-	done_stamp "sysroot-$sysroot_id"
-fi
-
-export PATH="$PREFIX/bin:$PATH"
-export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+ATL="$SDK_DIR/usr"
+ATL_NATIVES="$ATL/lib/java/dex/android_translation_layer"
+for f in bin/android-translation-layer-hotspot \
+	 lib/libandroid.so.0 lib/libskia.so lib/art/libandroidfw.so \
+	 lib/java/api-impl_classes.jar \
+	 lib/java/dex/android_translation_layer/framework-res.apk \
+	 lib/java/dex/android_translation_layer/natives/libtranslation_layer_main.so \
+	 share/atl/system/fonts; do
+	[ -e "$ATL/$f" ] || { echo "the SDK has no $f" >&2; exit 1; }
+done
+log "sdk: atlas $(sed -n 's/.*"atlas": "\([0-9a-f]*\)".*/\1/p' "$SDK_DIR/meta/sdk-manifest.json" 2>/dev/null | cut -c1-12)"
 
 HOST_JAVA_HOME="${HOST_JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-amd64}"
 TARGET_JAVA_HOME="${TARGET_JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-arm64}"
@@ -199,70 +155,7 @@ TARGET_JAVA_HOME="${TARGET_JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-arm64}"
 	{ echo "no arm64 JVM at $TARGET_JAVA_HOME (openjdk-21-jdk-headless:arm64)" >&2; exit 1; }
 export JAVA_HOME="$HOST_JAVA_HOME"
 
-# --- 2. atlas ---------------------------------------------------------------
-
-ATLAS_SRC="$ROOT/atl-touch"
-ATLAS_BUILD="$BUILD_DIR/atlas-build"
-[ -f "$ATLAS_SRC/meson.build" ] ||
-	{ echo "no atl-touch checkout: git submodule update --init --remote" >&2; exit 1; }
-
-CROSS_FILE="$BUILD_DIR/meson-cross.ini"
-CC="$TRIPLE-gcc" CXX="$TRIPLE-g++" AR="$TRIPLE-ar" STRIP="$TRIPLE-strip" \
-PKG_CONFIG="$TRIPLE-pkg-config" \
-CROSS_LIB_DIRS="$PREFIX/lib $PREFIX/lib/art" CROSS_INCLUDE_DIRS="$PREFIX/include" \
-HOST_JAVA_HOME="$HOST_JAVA_HOME" TARGET_JAVA_HOME="$TARGET_JAVA_HOME" \
-	"$ROOT/scripts/write-meson-cross.sh" "$CROSS_FILE"
-
-# -Dskia-prebuilt: skia's gn build is not driven from atlas's meson and does not
-# cross-compile from it, so a ready-made libskia.so is linked instead. This is
-# atlas's own option, written for exactly this.
-# The prefix only decides what atlas bakes into its RUNPATHs and INSTALL_DATADIR.
-# The click's layout is flat (everything native in lib/), so nothing is actually
-# installed there and run.sh's LD_LIBRARY_PATH is what resolves the libraries;
-# the version-independent 'current' path is used anyway, so a baked-in path is
-# at worst inert rather than wrong.
-SETUP_ARGS=(
-	--cross-file "$CROSS_FILE"
-	--buildtype=release --libdir=lib
-	--prefix="/opt/click.ubuntu.com/$PKG/current/usr"
-	-Dskia-prebuilt="$SYSROOT_DIR/skia"
-	-Dhotspot-launcher=enabled
-	-Dimage-launcher=disabled
-)
-# The JDK and the cross file are baked into meson's coredata, so a change to
-# either needs a from-scratch configure rather than --reconfigure.
-setup_id="$(printf '%s' "${SETUP_ARGS[*]} $HOST_JAVA_HOME $TARGET_JAVA_HOME" | sha256sum | cut -c1-12)"
-if [ ! -f "$ATLAS_BUILD/build.ninja" ]; then
-	log "configuring atlas ($TRIPLE, prebuilt skia)"
-	meson setup "${SETUP_ARGS[@]}" "$ATLAS_BUILD" "$ATLAS_SRC"
-	printf '%s' "$setup_id" >"$ATLAS_BUILD/.setup-id"
-elif [ "$(cat "$ATLAS_BUILD/.setup-id" 2>/dev/null)" != "$setup_id" ]; then
-	log "atlas was configured differently, wiping"
-	meson setup --wipe "${SETUP_ARGS[@]}" "$ATLAS_BUILD" "$ATLAS_SRC"
-	printf '%s' "$setup_id" >"$ATLAS_BUILD/.setup-id"
-fi
-
-ATLAS_TARGETS=(
-	android-translation-layer-hotspot
-	libtranslation_layer_main.so
-	libandroid.so.0
-	src/api-impl/hax.jar
-	res/framework-res/framework-res.apk
-)
-log "building atlas ($(git -C "$ATLAS_SRC" rev-parse --short HEAD 2>/dev/null || echo '?'))"
-ninja -C "$ATLAS_BUILD" -j"$JOBS" "${ATLAS_TARGETS[@]}"
-
-# hax.jar, not hax-stripped.jar and not api-impl.jar. api-impl.jar is
-# hax-stripped.jar run through `dx --dex` and holds nothing but a classes.dex,
-# which HotSpot cannot read; hax-stripped.jar drops three compile-only stubs
-# because ART rejects an app's oat file when a class is defined twice, and a JVM
-# class path has no such check -- Fenix's own activity needs one of the three
-# (OnBackInvokedCallback) at load time.
-for f in "${ATLAS_TARGETS[@]}"; do
-	[ -e "$ATLAS_BUILD/$f" ] || { echo "atlas produced no $f" >&2; exit 1; }
-done
-
-# --- 3. the libcore/dalvik compat shim --------------------------------------
+# --- 2. the libcore/dalvik compat shim --------------------------------------
 
 shim_id="$(find "$ROOT/shim/src" "$ROOT/shim/native" "$ROOT/shim/resources" -type f | sort | xargs cat | sha256sum | cut -c1-12)"
 if ! stamp "shim-$shim_id"; then
@@ -272,14 +165,15 @@ if ! stamp "shim-$shim_id"; then
 	done_stamp "shim-$shim_id"
 fi
 
-# --- 4. the payload: Gecko, the class path, the resource APK, the megazord ---
+# --- 3. the payload: Gecko, the class path, the resource APK, the megazord ---
 
 if [ -n "${FENIX_PAYLOAD_DIR:-}" ]; then
 	log "payload: using $FENIX_PAYLOAD_DIR"
 	PAYLOAD_DIR="$FENIX_PAYLOAD_DIR"
 else
 	stamp "payload-$FENIX_PAYLOAD_TAG" ||
-		unpack_asset payload "$FENIX_PAYLOAD_TAG" "${FENIX_PAYLOAD_SHA256:-}" \
+		unpack_asset payload "$FENIX_ASSET_REPO" "fenix-jvm-payload-${ARCH}.tar.zst" \
+			"$FENIX_PAYLOAD_TAG" "${FENIX_PAYLOAD_SHA256:-}" \
 			"$PAYLOAD_DIR" "gecko/libxul.so"
 	done_stamp "payload-$FENIX_PAYLOAD_TAG"
 fi
@@ -290,7 +184,7 @@ jar_count=$(find "$PAYLOAD_DIR/classpath" -maxdepth 1 -name '*.jar' | wc -l)
 [ "$jar_count" -ge 100 ] ||
 	{ echo "only $jar_count jars in the payload's classpath" >&2; exit 1; }
 
-# --- 5. JNA's native --------------------------------------------------------
+# --- 4. JNA's native --------------------------------------------------------
 # The class path's jna jar is an AAR classes.jar and carries no natives at all;
 # without libjnidispatch every uniffi binding fails in Native.register before
 # the first frame. Stock upstream JNA, the version the class path pins.
@@ -306,31 +200,32 @@ if ! stamp "jna-$JNA_VERSION"; then
 	done_stamp "jna-$JNA_VERSION"
 fi
 
-# --- 6. assemble the click tree ---------------------------------------------
+# --- 5. assemble the click tree ---------------------------------------------
 
 log "assembling $INSTALL_DIR"
 rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"/{lib,atlas,classpath,gecko}
 
 # One flat directory for every native object, launcher included: atlas's natives
-# find each other through their $ORIGIN/ RUNPATH, and the absolute paths this
-# build baked into them do not exist on the device.
-cp "$ATLAS_BUILD/android-translation-layer-hotspot" "$INSTALL_DIR/lib/"
-cp "$ATLAS_BUILD/libtranslation_layer_main.so" "$ATLAS_BUILD/libandroid.so.0" "$INSTALL_DIR/lib/"
+# find each other through their $ORIGIN/ RUNPATH, and the SDK prefix the rest of
+# that RUNPATH names does not exist on the device.
+cp "$ATL/bin/android-translation-layer-hotspot" "$INSTALL_DIR/lib/"
+cp "$ATL_NATIVES/libtranslation_layer_main.so" "$INSTALL_DIR/lib/"
+cp -a "$ATL/lib/libandroid.so.0" "$INSTALL_DIR/lib/"
 ln -sfn libandroid.so.0 "$INSTALL_DIR/lib/libandroid.so"
-cp "$SYSROOT_DIR/skia/libskia.so" "$INSTALL_DIR/lib/"
+cp "$ATL/lib/libskia.so" "$INSTALL_DIR/lib/"
+cp -a "$ATL"/lib/libglfw.so* "$INSTALL_DIR/lib/"
 cp "$OUT/libportshim.so" "$INSTALL_DIR/lib/"
 cp "$OUT/jna/libjnidispatch.so" "$INSTALL_DIR/lib/"
 cp "$PAYLOAD_DIR/natives/megazord/libmegazord.so" "$INSTALL_DIR/lib/"
 
-# What libtranslation_layer_main.so links and Ubuntu Touch does not ship: art's
-# libandroidfw and its own dependencies, and GLFW 3.4.
-cp "$PREFIX"/lib/art/*.so "$INSTALL_DIR/lib/"
-rm -f "$INSTALL_DIR/lib/libart.so" "$INSTALL_DIR/lib/libnativebridge.so"  # the stubs
-cp -a "$PREFIX"/lib/libglfw.so* "$INSTALL_DIR/lib/"
+# art's libandroidfw and its own dependencies are NOT copied wholesale: the SDK
+# ships the whole ART runtime and this vehicle loads none of it. Section 7's
+# closure pulls in exactly what libtranslation_layer_main.so asks for, out of
+# the SDK's lib/art.
 
-cp "$ATLAS_BUILD/src/api-impl/hax.jar" "$INSTALL_DIR/atlas/"
-cp "$ATLAS_BUILD/res/framework-res/framework-res.apk" "$INSTALL_DIR/atlas/"
+cp "$ATL/lib/java/api-impl_classes.jar" "$INSTALL_DIR/atlas/hax.jar"
+cp "$ATL_NATIVES/framework-res.apk" "$INSTALL_DIR/atlas/"
 # The Roboto faces atlas builds its minikin generic families (sans-serif and its
 # weight aliases) from. Without them the framework asks fontconfig, which hands
 # back Ubuntu on this device, and text is laid out with Android's metrics against
@@ -339,14 +234,8 @@ cp "$ATLAS_BUILD/res/framework-res/framework-res.apk" "$INSTALL_DIR/atlas/"
 #
 # Gecko is a separate matter: it reads $ANDROID_ROOT/fonts, which run.sh fills
 # from the device's own fonts on first start.
-[ -d "$ATLAS_SRC/res/fonts" ] ||
-	{ echo "the atl-touch checkout has no res/fonts" >&2; exit 1; }
 mkdir -p "$INSTALL_DIR/atlas/system/fonts"
-cp "$ATLAS_SRC"/res/fonts/*.ttf "$INSTALL_DIR/atlas/system/fonts/"
-for f in NOTICE README.md; do
-	[ -f "$ATLAS_SRC/res/fonts/$f" ] || continue
-	cp "$ATLAS_SRC/res/fonts/$f" "$INSTALL_DIR/atlas/system/fonts/"
-done
+cp -a "$ATL"/share/atl/system/fonts/. "$INSTALL_DIR/atlas/system/fonts/"
 log "bundled $(ls "$INSTALL_DIR"/atlas/system/fonts/*.ttf | wc -l) Roboto faces"
 
 cp "$OUT/shim.jar" "$INSTALL_DIR/classpath/"
@@ -373,7 +262,7 @@ app_version="$(sed -n 's/^version=//p' "$PAYLOAD_DIR/PAYLOAD.txt" 2>/dev/null | 
 sed "s|@CLICK_VERSION@|${app_version:-0.0.0}|" "$ROOT/manifest.json" \
 	>"$INSTALL_DIR/manifest.json"
 
-# --- 7. the JVM -------------------------------------------------------------
+# --- 6. the JVM -------------------------------------------------------------
 # A jlink image of the modules the app reaches, not a copy of the whole JDK
 # (about 210 MB down to about 75 MB). jlink is architecture-neutral, so the
 # host's builds the arm64 image out of the arm64 jmods and the cross build stays
@@ -422,14 +311,14 @@ log "  JVM image: $(du -sh "$INSTALL_DIR/jvm" | cut -f1)"
 # tree would be stale the moment the click is installed. run.sh creates one on
 # the device, in the cache directory, with -XX:+AutoCreateSharedArchive.
 
-# --- 8. bundle what the device does not have --------------------------------
+# --- 7. bundle what the device does not have --------------------------------
 # device-libs.txt is the device's own `ldconfig -p`. Anything the click needs
 # that is not there travels with it. Closure, because a bundled library brings
 # its own DT_NEEDED.
 
 device_libs="$ROOT/device-libs.txt"
 [ -f "$device_libs" ] || { echo "missing $device_libs" >&2; exit 1; }
-search_dirs=("/usr/lib/$TRIPLE" "/lib/$TRIPLE" "$PREFIX/lib" "$PREFIX/lib/art")
+search_dirs=("/usr/lib/$TRIPLE" "/lib/$TRIPLE" "$ATL/lib" "$ATL/lib/art")
 unavailable=""
 while :; do
 	needed=$(find "$INSTALL_DIR/lib" "$INSTALL_DIR/gecko" -type f \
@@ -467,15 +356,14 @@ done
 	exit 1
 }
 
-# The four stubs exist only to satisfy a link line; $PREFIX/lib is on the search
-# path above, so a real DT_NEEDED on one of them would be "resolved" by shipping
-# an empty .so and the failure would just move to the first call.
-for stub in libart.so libnativebridge.so libc_bio.so libdl_bio.so; do
-	[ ! -e "$INSTALL_DIR/lib/$stub" ] ||
-		{ echo "$stub was bundled -- something links it for real, and the stub is empty" >&2; exit 1; }
+# Nothing on this vehicle runs ART or the bionic shim, so if the closure reached
+# for one of these the assumption behind the whole package has changed.
+for unwanted in libart.so libnativebridge.so libc_bio.so.0 libdl_bio.so.0; do
+	[ ! -e "$INSTALL_DIR/lib/$unwanted" ] ||
+		{ echo "$unwanted was bundled -- something links it, which this vehicle does not expect" >&2; exit 1; }
 done
 
-# --- 9. strip and verify ----------------------------------------------------
+# --- 8. strip and verify ----------------------------------------------------
 # libxul alone is about 290 MB unstripped and about 150 MB stripped, which is
 # most of the difference between a click that fits and one that does not.
 

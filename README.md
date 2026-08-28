@@ -50,19 +50,22 @@ class-path symlink farm, `$ANDROID_ROOT/fonts` and the log — is in
 
 ## The two tarballs
 
-Two inputs cannot be built inside a click container, and both are consumed as
-release assets of this repository, pinned by tag in `build.sh`
-(`FENIX_SYSROOT_TAG`, `FENIX_PAYLOAD_TAG`) and verified against
-`FENIX_SYSROOT_SHA256` / `FENIX_PAYLOAD_SHA256` when those are set.
+The click is assembled, not compiled. Two prebuilt inputs carry everything
+heavy, each pinned by tag and sha256 in `build.sh`.
 
-**`fenix-jvm-sysroot-arm64.tar.zst`** (27 MB) — the build-time sysroot:
-`art_standalone`'s `libandroidfw` and friends plus their headers, ART's boot
-jars (javac compiles atlas's framework against libcore, not against the JDK),
-GLFW 3.4, and a prebuilt `libskia.so` with skia's `include/` and `modules/`.
-None of it can be cross-built; all of it changes rarely.
+**`atl-sdk-arm64.tar.zst`** (36 MB) — atlas and its whole native chain, a
+release asset of [atl-touch](https://github.com/NotKit/atl-touch) built by that
+repository's own CI on a native arm64 runner (`ci/build-sdk.sh`, tagged
+`sdk-<atlas-sha>`). It carries the HotSpot launcher,
+`libtranslation_layer_main.so`, `libandroid.so.0`, `api-impl_classes.jar`,
+`framework-res.apk`, the Roboto faces, and what Ubuntu Touch does not ship:
+`art_standalone`'s `libandroidfw` and friends, GLFW 3.4 and `libskia.so`.
 
-    scripts/make-sysroot.sh --from-art-click <ART packaging arm64 build dir> \
-                            --skia-src   <the skia checkout its atlas used>
+The framework jar this vehicle uses is `api-impl_classes.jar`, the javac output.
+The `api-impl.jar` beside it under `lib/java/dex` is the same classes after d8 —
+a `classes.dex` HotSpot cannot read.
+
+    FENIX_SDK_TAG=sdk-<sha> FENIX_SDK_DIR=<unpacked tree>   # to override either
 
 **`fenix-jvm-payload-arm64.tar.zst`** (205 MB) — Gecko for aarch64, Fenix's
 class path, the resource APK and the aarch64 megazord. This is the half that
@@ -87,14 +90,12 @@ For local iteration neither has to be published: `FENIX_SYSROOT_DIR` and
 
 ## Building
 
-    git submodule update --init --remote
     clickable build --arch arm64 --skip-review
     clickable install --ssh <device>
 
-`--remote` because `atl-touch` is pinned to a *branch* in `.gitmodules`, not just
-to the recorded commit: this packaging follows its tip rather than trailing it,
-and CI does the same before every build. Leave `--remote` off, or set the
-`workflow_dispatch` input to false, to reproduce an older build exactly.
+There is no submodule and no atlas build: `build.sh` downloads the SDK tag it
+pins and unpacks it. To test an unreleased atlas, point `FENIX_SDK_DIR` at a
+tree built by atl-touch's `ci/build-sdk.sh`.
 
 `--skip-review` because the package fails two `click-review` checks by design,
 both shared with the sibling packagings:
@@ -107,8 +108,8 @@ both shared with the sibling packagings:
   its own directory.
 
 `device-libs.txt` is the device's own `ldconfig -p`. `build.sh` bundles every
-`DT_NEEDED` that is not in it, transitively, and **fails** if something is
-neither on the device nor in the container — which is what stops "it linked in
+`DT_NEEDED` that is not in it, transitively, out of the SDK and the container,
+and **fails** if something is in neither — which is what stops "it linked in
 the container" from becoming a silent load failure on the phone.
 
 ## Knobs at run time
@@ -129,12 +130,12 @@ the container" from becoming a silent load failure on the phone.
 
 | | |
 | --- | --- |
-| the framework and the launcher | [NotKit/atl-touch](https://github.com/NotKit/atl-touch) `master`, tracked as the `atl-touch` submodule |
-| Gecko | [NotKit/firefox](https://github.com/NotKit/firefox) branch `atl/android-toolkit-glibc`, built with `mozconfig-atl-glibc-arm64` |
-| the two tarballs | releases of this repository, pinned by tag in `build.sh` |
+| the framework and the launcher | [NotKit/atl-touch](https://github.com/NotKit/atl-touch), as its `sdk-<sha>` release asset |
+| Gecko | [NotKit/firefox](https://github.com/NotKit/firefox) branch `atl/android-toolkit-glibc`, built with `mozconfig-atl-glibc-arm64` by `gecko/` here |
+| both tarballs | pinned by tag and sha256 in `build.sh` |
 
 Nothing else is needed to build: `clickable build --arch arm64 --skip-review`
-fetches the tarballs and compiles atlas from the submodule.
+fetches both and assembles them.
 The icon is derived from the Fennec F-Droid launcher icon, which is F-Droid's
 own community artwork rather than Mozilla's logo or wordmark, redrawn flat in
 Suru style. Nothing trademarked is reproduced, but the package is still an
@@ -162,10 +163,10 @@ Inherited from the vehicle, not from the packaging:
   AV1; an AAC or H.264 page gets a media error instead of a SIGSEGV.
 * **Nothing can be typed yet.** No input-method backend has come up on Mir on
   this stack, which is why `FENIX_URI` exists.
-* **Sampled JPEG decodes may crash** if the prebuilt `libskia.so` in the sysroot
-  tarball was built with `skia_use_system_libjpeg_turbo=true`; libjpeg-turbo 3.x
-  segfaults in `SkJpegCodec::onGetScaledDimensions`. `PROVENANCE.md` inside the
-  tarball says which build it is.
+* **Sampled JPEG decodes may crash** if the `libskia.so` in the SDK was built
+  with `skia_use_system_libjpeg_turbo=true`; libjpeg-turbo 3.x segfaults in
+  `SkJpegCodec::onGetScaledDimensions`. `meta/sdk-manifest.json` inside the
+  tarball records which skia it is.
 * **It is large.** `libxul.so` alone is about 150 MB stripped, the class path
   another 175 MB and the resource APK 114 MB.
 

@@ -5,18 +5,12 @@ on:
     branches: [master]
   pull_request:
   workflow_dispatch:
-    inputs:
-      follow_branch:
-        description: "Move submodules to their branch tips before building"
-        type: boolean
-        default: true
 
 jobs:
   build:
-    # An ordinary x86_64 runner: this is a CROSS build. There is no
-    # art_standalone here, and art_standalone is the only piece that has to be
-    # built natively -- which is why the sibling ART packaging needs an arm64
-    # runner and hours, and this needs neither.
+    # An ordinary x86_64 runner. Both heavy inputs -- atlas's SDK and the Gecko
+    # payload -- are prebuilt release assets, so this job assembles rather than
+    # compiles.
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     permissions:
@@ -25,19 +19,6 @@ jobs:
       CLICKABLE_NON_INTERACTIVE: "1"
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      # Submodules are pinned to a branch (see .gitmodules). A plain checkout
-      # gets the recorded commit; this moves them to the branch tip, so a push
-      # to atl-touch is tested here without a bump commit first. Set the
-      # workflow_dispatch input to false, or push with the recorded commit, to
-      # reproduce an older build exactly.
-      - name: Follow submodule branches
-        if: github.event_name != 'workflow_dispatch' || inputs.follow_branch
-        run: |
-          git submodule update --init --remote --recursive
-          git submodule status
 
       - name: Free disk space
         run: |
@@ -68,16 +49,6 @@ jobs:
           path: build/aarch64-linux-gnu/app/downloads
           key: fenix-click-dl-${{ hashFiles('build.sh') }}
 
-      # The payload build links libxul against the translation layer's own
-      # libandroid.so.0, and takes it from here rather than rebuilding atlas:
-      # the link shim then measures the same atlas this click ships, and its
-      # 283-entry gap list cannot drift from it.  See gecko/README.md.
-      - name: Collect libandroid
-        run: |
-          cp build/aarch64-linux-gnu/app/atlas-build/libandroid.so.0 \
-             atlas-libandroid-arm64.so
-          sha256sum atlas-libandroid-arm64.so | tee atlas-libandroid-arm64.so.sha256
-
       - name: Upload click package
         uses: actions/upload-artifact@v4
         with:
@@ -96,13 +67,14 @@ jobs:
           click=$(ls build/aarch64-linux-gnu/app/*.click)
           # clickable names it <package>_<version>_<arch>.click
           version=$(basename "$click" | cut -d_ -f2)
-          atl_sha=$(git -C atl-touch rev-parse --short HEAD)
+          eval "$(grep -E '^FENIX_SDK_TAG=' build.sh)"
+          atl_sha="${FENIX_SDK_TAG#sdk-}"
           tag="v${version}-atl.${atl_sha}"
           echo "publishing $click as $tag"
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "$click" atlas-libandroid-arm64.so* --clobber
+            gh release upload "$tag" "$click" --clobber
           else
-            gh release create "$tag" "$click" atlas-libandroid-arm64.so* \
+            gh release create "$tag" "$click" \
               --title "Firefox (Fenix) ${version} — atl-touch ${atl_sha}" \
               --prerelease \
               --notes "Unofficial test build of Firefox for Android (Fenix) for Ubuntu Touch 24.04 (arm64), running on OpenJDK 21 through the Android Translation Layer, atlas commit \`${atl_sha}\`. Not a stable release — for testing only."
