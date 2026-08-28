@@ -77,7 +77,8 @@ jobs:
       # ~/.mozbuild is clang, rust, the two sysroots, node, the Android SDK and
       # the JDK the Gradle build runs on: 15 minutes to refetch.
       - name: Restore toolchain cache
-        uses: actions/cache@v4
+        id: mozbuild-cache
+        uses: actions/cache/restore@v4
         with:
           path: ${{ env.MOZBUILD_STATE_PATH }}
           key: mozbuild-v1
@@ -93,7 +94,8 @@ jobs:
           restore-keys: ccache-
 
       - name: Restore Gradle cache
-        uses: actions/cache@v4
+        id: gradle-cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.gradle/caches
@@ -105,6 +107,13 @@ jobs:
         run: |
           cd gecko-src
           ./mach --no-interactive bootstrap --application-choice mobile_android
+
+      # bootstrap adds the Android targets, not this one, and the runner's own
+      # rustup toolchain is what configure finds first: without the target's
+      # std, `checking for rust target triplet` fails with "can't find crate
+      # for std" 16 seconds in.
+      - name: Rust std for the target
+        run: rustup target add aarch64-unknown-linux-gnu
 
       # --disable-debug-symbols is the CI-only difference: libxul is 3.1 GB
       # unstripped and stage-gecko.sh removes every debug section anyway, so
@@ -153,6 +162,22 @@ jobs:
       - name: Build Gecko
         timeout-minutes: 280
         run: cd gecko-src && ./mach build
+
+      - name: Save toolchain cache
+        if: always() && steps.mozbuild-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.MOZBUILD_STATE_PATH }}
+          key: mozbuild-v1
+
+      - name: Save Gradle cache
+        if: always() && steps.gradle-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-v1
 
       # always(): also after the build step timed out or failed, which is the
       # case it exists for.
