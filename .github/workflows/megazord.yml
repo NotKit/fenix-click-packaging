@@ -47,6 +47,24 @@ jobs:
           git clone https://github.com/mozilla/application-services appservices
           echo "APPSERVICES=$PWD/appservices" >> "$GITHUB_ENV"
 
+      # Mozilla's own build of the same revision, for the check below: equal
+      # uniffi symbol sets are what say every Native.register on Fenix's class
+      # path binds.  linux-x86-64 is the only desktop target they publish, and
+      # the surface is architecture-independent, so it is the right reference.
+      - name: Reference megazord
+        run: |
+          ver=$(sed -n 's/.*MEGAZORD_VERSION:-\([0-9.]*\)}.*/\1/p' \
+                gecko/megazord/build-megazord.sh | head -1)
+          if [ -n "${{ inputs.version }}" ]; then ver="${{ inputs.version }}"; fi
+          url="https://maven.mozilla.org/maven2/org/mozilla/appservices/nightly/full-megazord-libsForTests/$ver/full-megazord-libsForTests-$ver.jar"
+          echo "reference: $url"
+          if curl -sSfL -o ref.jar "$url"; then
+            unzip -q -o ref.jar 'linux-x86-64/*' -d ref
+            echo "MEGAZORD_REF=$PWD/ref/linux-x86-64/libmegazord.so" >> "$GITHUB_ENV"
+          else
+            echo "no published megazord for $ver -- the symbol check will be skipped" >&2
+          fi
+
       - name: NSS
         run: gecko/megazord/build-nss.sh --out "$PWD/build/megazord/nss-arm64-static"
 
@@ -64,7 +82,7 @@ jobs:
           sha256sum libmegazord-arm64.so | tee libmegazord-arm64.so.sha256
           # The version the library reports is what the class path's Kotlin
           # bindings expect; record it for the release tag.
-          strings libmegazord-arm64.so | grep -m1 -E '^15[0-9]\.20[0-9]{12}$' \
+          strings libmegazord-arm64.so | grep -m1 -oE '1[0-9][0-9]\.20[0-9]{12}' \
             | sed 's/^/MEGAZORD_BUILT_VERSION=/' >> "$GITHUB_ENV" || true
 
       - uses: actions/upload-artifact@v4
