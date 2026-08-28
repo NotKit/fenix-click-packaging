@@ -137,8 +137,12 @@ rather than builds them:
 Both are found by scanning releases for the asset name, newest first, so no tag
 has to be pinned.
 
-The build is what it is: several hours cold on a 4-core runner. Three caches
-(toolchains, ccache, Gradle) share the repository's 10 GB Actions cache budget,
-and `--disable-debug-symbols` is set only in CI — the staged payload has no
-debug sections anyway, so building them would cost an hour and most of the disk
-for nothing.
+A cold compile is about 70 minutes on a 4-core runner, which is what
+`--disable-debug-symbols` buys — it is set only in CI, since the staged payload
+has no debug sections anyway.
+
+Two caches share the repository's 10 GB Actions budget: ccache and Gradle.
+`~/.mozbuild` is deliberately not one of them. It is 7.5 GB before the SDK and
+NDK zips CI leaves under `mozboot/`, so it does not fit, and a truncated entry
+comes back as an NDK zip `unzip` refuses. Bootstrapping it fresh costs three
+minutes, which is cheaper than the failure mode.

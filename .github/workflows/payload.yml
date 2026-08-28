@@ -38,7 +38,7 @@ env:
   GECKO_REF: ${{ inputs.gecko_ref || github.event.client_payload.ref || 'atl/android-toolkit-glibc' }}
   MOZBUILD_STATE_PATH: ${{ github.workspace }}/.mozbuild
   CCACHE_DIR: ${{ github.workspace }}/.ccache
-  CCACHE_MAXSIZE: 2G
+  CCACHE_MAXSIZE: 5G
 
 jobs:
   payload:
@@ -69,21 +69,12 @@ jobs:
             "https://github.com/$GECKO_REPO" gecko-src
           git -C gecko-src rev-parse HEAD | tee gecko.sha
 
-      # A repository gets 10 GB of Actions cache in total, so the three caches
-      # below are sized to fit together: toolchains ~4 GB, ccache 2 GB, Gradle
-      # ~2 GB.  The two fixed keys are saved once and then reused; bump the -vN
-      # to refetch after a toolchain or Gradle upgrade.
-      #
-      # ~/.mozbuild is clang, rust, the two sysroots, node, the Android SDK and
-      # the JDK the Gradle build runs on: 15 minutes to refetch.
-      - name: Restore toolchain cache
-        id: mozbuild-cache
-        uses: actions/cache/restore@v4
-        with:
-          path: ${{ env.MOZBUILD_STATE_PATH }}
-          key: mozbuild-v1
-          restore-keys: mozbuild-
-
+      # A repository gets 10 GB of Actions cache in total, and it all goes to
+      # the compiler cache and Gradle.  ~/.mozbuild is deliberately NOT cached:
+      # it is 7.5 GB here -- 4.3 GB of that the Android SDK -- plus the SDK and
+      # NDK zips under mozboot/, so it does not fit, and a truncated entry
+      # comes back as an NDK zip that unzip refuses.  Bootstrapping it fresh
+      # costs three minutes.
       # C and C++ only -- the Rust half is rebuilt every time -- but that is
       # still most of the compile.
       - name: Restore compiler cache
@@ -183,13 +174,6 @@ jobs:
           fi
           [ "$rc" = 0 ] ||
             echo "::notice::mach build exited $rc -- expected, android-stage-package cannot run here; every payload input is present"
-
-      - name: Save toolchain cache
-        if: always() && steps.mozbuild-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: ${{ env.MOZBUILD_STATE_PATH }}
-          key: mozbuild-v1
 
       - name: Save Gradle cache
         if: always() && steps.gradle-cache.outputs.cache-hit != 'true'
