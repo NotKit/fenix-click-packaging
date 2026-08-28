@@ -100,7 +100,7 @@ unpack_asset() { # unpack_asset <name> <repo> <file> <tag> <sha256> <destdir> <m
 	local name="$1" repo="$2" file="$3" tag="$4" sha="$5" dest="$6" marker="$7"
 	local archive="$DL/${tag}-${file}"
 	if [ ! -f "$archive" ]; then
-		local url="https://github.com/${FENIX_ASSET_REPO}/releases/download/${tag}/${file}"
+		local url="https://github.com/${repo}/releases/download/${tag}/${file}"
 		log "downloading ${name} ${tag}"
 		curl -Lf --retry 3 -o "$archive.tmp" "$url" || {
 			rm -f "$archive.tmp"
@@ -136,7 +136,8 @@ else
 fi
 
 ATL="$SDK_DIR/usr"
-ATL_NATIVES="$ATL/lib/java/dex/android_translation_layer"
+ATL_DEX="$ATL/lib/java/dex/android_translation_layer"   # framework-res.apk
+ATL_NATIVES="$ATL_DEX/natives"                          # libtranslation_layer_main.so
 for f in bin/android-translation-layer-hotspot \
 	 lib/libandroid.so.0 lib/libskia.so lib/art/libandroidfw.so \
 	 lib/java/api-impl_classes.jar \
@@ -145,7 +146,7 @@ for f in bin/android-translation-layer-hotspot \
 	 share/atl/system/fonts; do
 	[ -e "$ATL/$f" ] || { echo "the SDK has no $f" >&2; exit 1; }
 done
-log "sdk: atlas $(sed -n 's/.*"atlas": "\([0-9a-f]*\)".*/\1/p' "$SDK_DIR/meta/sdk-manifest.json" 2>/dev/null | cut -c1-12)"
+log "sdk: $FENIX_SDK_TAG, atlas $(sed -n 's/.*"atlas": "\(.*\)".*/\1/p' "$SDK_DIR/meta/sdk-manifest.json" 2>/dev/null | cut -c1-12)"
 
 HOST_JAVA_HOME="${HOST_JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-amd64}"
 TARGET_JAVA_HOME="${TARGET_JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-arm64}"
@@ -219,13 +220,17 @@ cp "$OUT/libportshim.so" "$INSTALL_DIR/lib/"
 cp "$OUT/jna/libjnidispatch.so" "$INSTALL_DIR/lib/"
 cp "$PAYLOAD_DIR/natives/megazord/libmegazord.so" "$INSTALL_DIR/lib/"
 
-# art's libandroidfw and its own dependencies are NOT copied wholesale: the SDK
-# ships the whole ART runtime and this vehicle loads none of it. Section 7's
-# closure pulls in exactly what libtranslation_layer_main.so asks for, out of
-# the SDK's lib/art.
+# art's libandroidfw and its own dependencies, by name. Not the whole of the
+# SDK's lib/art -- that carries the ART runtime this vehicle never loads -- and
+# not left to section 7's closure either: gecko/ ships a liblog.so of its own
+# (the shim's six-kilobyte forwarder), the closure would count that as the
+# liblog atlas asked for, and atlas would bind the wrong one.
+for l in libandroidfw.so liblog.so libbase.so libcutils.so libutils.so libziparchive.so; do
+	cp "$ATL/lib/art/$l" "$INSTALL_DIR/lib/$l"
+done
 
 cp "$ATL/lib/java/api-impl_classes.jar" "$INSTALL_DIR/atlas/hax.jar"
-cp "$ATL_NATIVES/framework-res.apk" "$INSTALL_DIR/atlas/"
+cp "$ATL_DEX/framework-res.apk" "$INSTALL_DIR/atlas/"
 # The Roboto faces atlas builds its minikin generic families (sans-serif and its
 # weight aliases) from. Without them the framework asks fontconfig, which hands
 # back Ubuntu on this device, and text is laid out with Android's metrics against

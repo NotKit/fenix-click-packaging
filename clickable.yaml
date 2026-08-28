@@ -44,6 +44,9 @@ dependencies_target:
   - libgstreamer1.0-dev
   - libgstreamer-plugins-base1.0-dev
   - libgudev-1.0-dev
+  # the SDK's atlas links content-hub, and the device ships Lomiri's fork under
+  # a different soname (liblomiri-content-hub.so.1), so this one travels
+  - libcontent-hub-glib-dev
   - libportal-dev
   - libsqlite3-dev
   - libvulkan-dev
