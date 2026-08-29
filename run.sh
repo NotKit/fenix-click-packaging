@@ -116,6 +116,12 @@ export LD_LIBRARY_PATH="${JAVA_HOME}/lib/server:${PKG_ROOT}/lib:${GECKO}${LD_LIB
 # launcher (see the env at the bottom), never into the shell helpers this script
 # runs on the way there.
 PRELOAD="${GECKO}/libmozglue.so${LD_PRELOAD:+:${LD_PRELOAD}}"
+# Ubuntu Touch preloads libtls-padding.so so the Android GPU blob can use the
+# bionic TLS slots (Mali keeps its per-thread context at tpidr_el0+24). That
+# only works while the padding holds the first static-TLS offset, so it has to
+# stay ahead of libmozglue, whose own TLS block would otherwise land there.
+TLSPAD=/usr/lib/aarch64-linux-gnu/libtls-padding.so
+[ -e "${TLSPAD}" ] && PRELOAD="${TLSPAD}:${PRELOAD}"
 
 # liblog drops anything below INFO without this, which is most of the app's own
 # logging; on the device the journal is the only log there is.
