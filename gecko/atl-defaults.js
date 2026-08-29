@@ -35,12 +35,20 @@ pref("layout.frame_rate", 60);
 // block and font.name-list.serif.x-western is the literal alias "serif" -- a
 // name fontconfig understands and gfxFT2FontList does not.  Every generic then
 // resolves to 0 families and falls back to whichever face is first.
-pref("font.name-list.serif.x-western", "DejaVu Serif, Liberation Serif");
-pref("font.name-list.sans-serif.x-western", "DejaVu Sans, Liberation Sans");
-pref("font.name-list.monospace.x-western", "DejaVu Sans Mono, Liberation Mono");
-pref("font.name-list.serif.x-unicode", "DejaVu Serif, Liberation Serif");
-pref("font.name-list.sans-serif.x-unicode", "DejaVu Sans, Liberation Sans");
-pref("font.name-list.monospace.x-unicode", "DejaVu Sans Mono, Liberation Mono");
+//
+// This is the floor, for the first run before a profile exists.  The click's
+// user.js carries the same thing for all 29 langGroups; without x-cyrillic
+// there, a Russian page reaches per-character fallback and gets laid out in
+// whatever face happens to cover Cyrillic.
+pref("font.name-list.serif.x-western", "Noto Serif, DejaVu Serif, Liberation Serif");
+pref("font.name-list.sans-serif.x-western", "Roboto, Noto Sans, DejaVu Sans, Liberation Sans, Ubuntu");
+pref("font.name-list.monospace.x-western", "Noto Sans Mono, DejaVu Sans Mono, Liberation Mono, Ubuntu Mono");
+pref("font.name-list.serif.x-cyrillic", "Noto Serif, DejaVu Serif, Liberation Serif");
+pref("font.name-list.sans-serif.x-cyrillic", "Roboto, Noto Sans, DejaVu Sans, Liberation Sans, Ubuntu");
+pref("font.name-list.monospace.x-cyrillic", "Noto Sans Mono, DejaVu Sans Mono, Liberation Mono, Ubuntu Mono");
+pref("font.name-list.serif.x-unicode", "Noto Serif, DejaVu Serif, Liberation Serif");
+pref("font.name-list.sans-serif.x-unicode", "Roboto, Noto Sans, DejaVu Sans, Liberation Sans, Ubuntu");
+pref("font.name-list.monospace.x-unicode", "Noto Sans Mono, DejaVu Sans Mono, Liberation Mono, Ubuntu Mono");
 
 // WebGL.  gfxPlatform::InitWebGLConfig disables it whenever there is no GPU
 // process and the run is not headless, which is exactly this configuration.

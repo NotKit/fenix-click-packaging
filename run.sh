@@ -122,18 +122,13 @@ PRELOAD="${GECKO}/libmozglue.so${LD_PRELOAD:+:${LD_PRELOAD}}"
 export ANDROID_LOG_TAGS="${ANDROID_LOG_TAGS:-*:V}"
 
 # --- Gecko ------------------------------------------------------------------
-# $ANDROID_ROOT/fonts is where gfxFT2FontList looks; it MOZ_CRASHes with "No
-# font files found" if it is empty. The trailing slash is load-bearing -- Gecko
-# appends "/fonts" to this string. Built once into the cache from the device's
-# own fonts, because the package cannot hold links to files it does not own.
-export ANDROID_ROOT="${CACHE}/androidroot/"
-if [ ! -d "${CACHE}/androidroot/fonts" ] ||
-   [ -z "$(ls -A "${CACHE}/androidroot/fonts" 2>/dev/null)" ]; then
-    mkdir -p "${CACHE}/androidroot/fonts"
-    find /usr/share/fonts \( -name '*.ttf' -o -name '*.otf' \) 2>/dev/null | head -40 |
-        while read -r f; do ln -sf "$f" "${CACHE}/androidroot/fonts/"; done
-    echo "androidroot/fonts: $(ls "${CACHE}/androidroot/fonts" | wc -l) faces"
-fi
+# Fonts come from atlas' libandroid, which implements the NDK system-font API
+# over fontconfig; Gecko reads $ANDROID_ROOT/fonts only when that iterator
+# yields nothing. Point it at the package's own Roboto so the fallback is the
+# framework's faces rather than a crash -- gfxFT2FontList MOZ_CRASHes with "No
+# font files found" on an empty directory. The trailing slash is load-bearing:
+# Gecko appends "/fonts" to this string.
+export ANDROID_ROOT="${PKG_ROOT}/atlas/system/"
 
 export MOZ_ANDROID_LIBDIR_OVERRIDE="${GECKO}/libxul.so"
 export MOZ_ANDROID_CPU_ABI=arm64-v8a
