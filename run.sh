@@ -21,6 +21,9 @@
 #   FENIX_EXCLUDE=      space-separated substrings; a class-path jar whose name
 #                       contains one is left off. Default: androidx.profileinstaller.
 #   FENIX_JVMOPTS=      extra -X options, space separated.
+#   FENIX_NO_JSIG=1     do not preload libjsig. The JVM then loses SIGSEGV to
+#                       Gecko and JIT-compiled code dies on its first implicit
+#                       null check; only for reproducing that.
 #   FENIX_LOG=          where the log goes (default $CACHE/fenix.log).
 
 APP_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
@@ -122,6 +125,20 @@ PRELOAD="${GECKO}/libmozglue.so${LD_PRELOAD:+:${LD_PRELOAD}}"
 # stay ahead of libmozglue, whose own TLS block would otherwise land there.
 TLSPAD=/usr/lib/aarch64-linux-gnu/libtls-padding.so
 [ -e "${TLSPAD}" ] && PRELOAD="${TLSPAD}:${PRELOAD}"
+
+# HotSpot takes SIGSEGV for the implicit null checks, stack banging and
+# safepoint polls it compiles into JIT code, so its handler has to stay
+# installed. Gecko replaces it about two seconds into every run: SpiderMonkey's
+# wasm trap handler takes SIGSEGV and SIGILL, nsSigHandlers takes SIGFPE,
+# mozglue takes SIGBUS, and the profiler takes SIGUSR1/SIGUSR2 -- which is the
+# "*** Handler was modified!" HotSpot prints in its own hs_err. libjsig is the
+# JDK's answer: it keeps the VM's handlers primary and chains the app's behind
+# them. Without it, staying alive means turning the JIT off, and -Xint is what
+# makes this browser feel slow. FENIX_NO_JSIG=1 puts it back for a comparison.
+JSIG="${JAVA_HOME}/lib/libjsig.so"
+if [ -z "${FENIX_NO_JSIG:-}" ] && [ -e "${JSIG}" ]; then
+    PRELOAD="${PRELOAD}:${JSIG}"
+fi
 
 # liblog drops anything below INFO without this, which is most of the app's own
 # logging; on the device the journal is the only log there is.
