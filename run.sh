@@ -24,7 +24,8 @@
 #   FENIX_NO_JSIG=1     do not preload libjsig. The JVM then loses SIGSEGV to
 #                       Gecko and JIT-compiled code dies on its first implicit
 #                       null check; only for reproducing that.
-#   FENIX_LOG=          where the log goes (default $CACHE/fenix.log).
+#   FENIX_LOG=          where the log goes (default $CACHE/fenix.log). The
+#                       previous run's is kept beside it as <log>.1.
 
 APP_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 PKG_NAME=fenix.thekit
@@ -252,15 +253,35 @@ if [ "${FENIX_CDS:-auto}" != off ]; then
         echo "CDS: archive missing or stale -- this run writes one"
         rm -f "${JSA}" "${JSA}.fp"
     fi
+    # The archive is written on the way out of the VM, which is past the exec
+    # below: nothing in this script runs again to record what it was written
+    # against. So write the fingerprint now. A run that dies before producing an
+    # archive does not fool the next one -- that check is "archive missing OR
+    # fingerprint differs", and the missing archive alone forces a fresh write.
+    [ -n "${CDSFP}" ] && printf '%s' "${CDSFP}" > "${JSA}.fp"
 fi
 
 JVMX=""
 for o in ${FENIX_JVMOPTS:-}; do JVMX="${JVMX} -X ${o}"; done
 
-echo "fenix: PKG_ROOT=${PKG_ROOT} state=${STATE} cache=${CACHE} log=${LOG}"
+# The redirect below truncates the log, and after the exec there is no parent
+# left to tail it, so keep the previous run's output: after a crash it is the
+# only place the reason is written down.
+[ -f "${LOG}" ] && mv -f "${LOG}" "${LOG}.1"
 
+echo "fenix: PKG_ROOT=${PKG_ROOT} state=${STATE} cache=${CACHE} log=${LOG} (previous run: ${LOG}.1)"
+
+# Become the browser rather than supervise it. Lomiri addresses the app by the
+# pid it started: the SIGSTOP when it is backgrounded, the SIGCONT, the SIGTERM
+# on close and the "stopped" it reports all go there. A shell waiting on a child
+# would take all of that itself and leave the JVM running behind it, which is
+# why closing the app used to need a separate kill. So exec -- and nothing may
+# be added after this line, it never runs.
+#
+# `env` execs the launcher in turn, so the pid still survives: it is here only
+# to keep LD_PRELOAD off the shell helpers above, which cannot load libmozglue.
 # shellcheck disable=SC2086
-env LD_PRELOAD="${PRELOAD}" \
+exec env LD_PRELOAD="${PRELOAD}" \
     "${PKG_ROOT}/lib/android-translation-layer-hotspot" "${PKG_ROOT}/fenix.apk" \
     --api-impl-jar "${PKG_ROOT}/atlas/hax.jar" \
     --framework-res "${PKG_ROOT}/atlas/framework-res.apk" \
@@ -278,18 +299,3 @@ env LD_PRELOAD="${PRELOAD}" \
     ${FENIX_URI:+-u "${FENIX_URI}"} \
     --sdk-int "${FENIX_SDK_INT:-28}" \
     "$@" > "${LOG}" 2>&1
-rc=$?
-
-# The journal is the only log Lomiri shows, and it would otherwise be empty:
-# say enough there to know whether to go and read the file.
-if [ "$rc" != 0 ]; then
-    echo "fenix: exit ${rc}; last 40 lines of ${LOG}:" >&2
-    tail -40 "${LOG}" >&2
-fi
-
-# The archive is written on the way out of the VM; record the fingerprint it was
-# written against so the next run knows whether it still matches.
-if [ -n "${CDSFP}" ] && [ -f "${JSA}" ]; then
-    printf '%s' "${CDSFP}" > "${JSA}.fp"
-fi
-exit $rc

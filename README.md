@@ -40,7 +40,9 @@ Siblings, for orientation:
                     lib/ are inert on a JVM class path, but atlas's
                     AssetManager finds resource containers by scanning the class
                     path for zips holding an AndroidManifest.xml
-    run.sh          the device launcher
+    run.sh          the device launcher. It sets the environment up and then
+                    execs the launcher, so the process Lomiri started IS the
+                    browser: suspend, resume and close reach the JVM directly.
     user.js         the Gecko prefs the profile is seeded with
 
 The profile lives in `~/.local/share/fenix.thekit` and nothing removes it;
