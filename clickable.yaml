@@ -23,6 +23,9 @@ dependencies_host:
   - git
   - openjdk-21-jdk-headless
   - python-is-python3
+  # to run the jlinked arm64 java once, for the base CDS archive: jlink's
+  # --generate-cds-archive needs the image's own java and this is a cross build
+  - qemu-user-static
   - python3
   - rsync
   - unzip

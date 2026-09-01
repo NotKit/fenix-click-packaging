@@ -311,10 +311,45 @@ rm -rf "$INSTALL_DIR/jvm"
 	{ echo "jlink produced no lib/server/libjvm.so" >&2; exit 1; }
 log "  JVM image: $(du -sh "$INSTALL_DIR/jvm" | cut -f1)"
 
+# The base CDS archive. A jlink image has none unless one is generated into it,
+# and the app archive run.sh writes on the device is a *dynamic* archive layered
+# on top of a base -- without one HotSpot refuses the flag outright and says so
+# only in its cds log, so every run has been paying full class loading with the
+# machinery in run.sh doing nothing. jlink's --generate-cds-archive cannot help
+# here: it runs the image's own java, and this is an aarch64 image built on
+# x86_64. qemu-user can run it, and a dump is about 8 s.
+#
+# It is not fatal if this fails. The click works without it, only slower, and a
+# build host with no qemu should still produce one.
+log "dumping the base CDS archive"
+jvm_java="$INSTALL_DIR/jvm/bin/java"
+if [ "$(uname -m)" = "aarch64" ]; then
+	cds_run=("$jvm_java")
+elif command -v qemu-aarch64-static >/dev/null; then
+	cds_run=(qemu-aarch64-static "$jvm_java")
+elif command -v qemu-aarch64 >/dev/null; then
+	cds_run=(qemu-aarch64 "$jvm_java")
+else
+	cds_run=()
+	echo "  !! no qemu-aarch64 -- shipping without a base CDS archive" >&2
+fi
+if [ ${#cds_run[@]} -gt 0 ]; then
+	# -Xshare:dump writes lib/server/classes.jsa, which is where the runtime
+	# looks with no -XX:SharedArchiveFile, so run.sh needs no change.
+	"${cds_run[@]}" -Xshare:dump >"$BUILD_DIR/cds-dump.log" 2>&1 ||
+		echo "  !! -Xshare:dump failed, see $BUILD_DIR/cds-dump.log" >&2
+fi
+if [ -f "$INSTALL_DIR/jvm/lib/server/classes.jsa" ]; then
+	log "  base CDS archive: $(du -h "$INSTALL_DIR/jvm/lib/server/classes.jsa" | cut -f1)"
+else
+	echo "  !! no jvm/lib/server/classes.jsa -- AppCDS will be off on the device" >&2
+fi
+
 # The class-path archive (AppCDS) is NOT built here and NOT shipped: HotSpot
 # records each entry's size and mtime, so an archive made against this build
 # tree would be stale the moment the click is installed. run.sh creates one on
-# the device, in the cache directory, with -XX:+AutoCreateSharedArchive.
+# the device, in the cache directory, with -XX:+AutoCreateSharedArchive, on top
+# of the base archive above.
 
 # --- 7. bundle what the device does not have --------------------------------
 # device-libs.txt is the device's own `ldconfig -p`. Anything the click needs
