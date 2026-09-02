@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Register the classes Android instantiates by *name* for reflection.
 
-    gen-reflect-config.py <out.json> <jar> [<jar> ...]
+    gen-reflect-config.py <out-reflect.json> <out-jni.json> <jar> [<jar> ...]
 
 Whole families of class are invisible to both the tracing agent and the
 closed-world analysis, because nothing in the bytecode names them: every
@@ -26,12 +26,14 @@ A second family: **span array types**. `Spannable.getSpans()` does
 to be registered for unsafe allocation -- `RegistrableDomainSpan[]` was an
 `IllegalArgumentException` from inside Compose while the toolbar was drawing.
 
-A third: GeckoView's **@WrapForJNI classes**. `NativeQueue` dispatches a queued
-call with `getDeclaredMethod(name, argTypes)`, so the method has to survive by
-name -- `GeckoSession$Window.attachEditable` was a `NoSuchMethodException` the
-moment the first tab opened. Any class carrying one of Gecko's four
-JNI/reflection marker annotations gets its whole surface kept; there are about
-a hundred of them.
+A third: GeckoView's **@WrapForJNI classes**, which need both configs. Java
+side, `NativeQueue` dispatches a queued call with `getDeclaredMethod(name,
+argTypes)` -- `GeckoSession$Window.attachEditable` was a `NoSuchMethodException`
+the moment the first tab opened. Native side, libxul reaches the same members
+with `GetMethodID`, which is JNI rather than reflection and fails separately --
+`GeckoRuntime.unlockScreenOrientation` killed the Gecko thread. Any class
+carrying one of Gecko's four JNI/reflection marker annotations gets its whole
+surface kept in both; there are about a hundred of them.
 
 Generated at build time rather than committed: a payload bump adds and removes
 classes, and a stale list is a list that is wrong exactly where it matters.
@@ -128,7 +130,7 @@ def read_class(data):
 
 
 def main():
-    out, jars = sys.argv[1], sys.argv[2:]
+    out, out_jni, jars = sys.argv[1], sys.argv[2], sys.argv[3:]
     parents = {}
     jni = set()
     for jar in jars:
@@ -168,12 +170,14 @@ def main():
     entries += [{"name": c.replace("/", ".") + "[]", "unsafeAllocated": True}
                 for c in spans]
 
-    entries += [{"name": c.replace("/", "."), "allDeclaredMethods": True,
-                 "allDeclaredFields": True, "allDeclaredConstructors": True}
-                for c in sorted(jni)]
-    with open(out, "w") as f:
-        json.dump(entries, f, indent=2)
-        f.write("\n")
+    gecko = [{"name": c.replace("/", "."), "allDeclaredMethods": True,
+              "allDeclaredFields": True, "allDeclaredConstructors": True}
+             for c in sorted(jni)]
+    entries += gecko
+    for path, data in ((out, entries), (out_jni, gecko)):
+        with open(path, "w") as f:
+            json.dump(data, f, indent=2)
+            f.write("\n")
     print(f"reflection: {len(picked)} name-instantiated classes, "
           f"{len(spans)} span array types and {len(jni)} Gecko JNI classes, "
           f"out of {len(parents)} classes")

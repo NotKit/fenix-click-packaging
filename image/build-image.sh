@@ -197,7 +197,8 @@ echo "image class path: framework + shim + ${#JARS[@]} jars"
 # see its docstring. Generated rather than committed, because a payload bump
 # moves the set and a stale list is wrong exactly where it matters.
 GENCFG="$OUTDIR/generated-reflect-config.json"
-python3 "$HERE/gen-reflect-config.py" "$GENCFG" "$HAX" "$SHIMJAR" "${JARS[@]}"
+GENJNI="$OUTDIR/generated-jni-config.json"
+python3 "$HERE/gen-reflect-config.py" "$GENCFG" "$GENJNI" "$HAX" "$SHIMJAR" "${JARS[@]}"
 
 # SDK_INT is a static final int: initialised at build time it is constant-folded
 # into every "SDK_INT >= N" branch in the app and no run-time -D can undo it.
@@ -245,6 +246,7 @@ run_ni "$OUTDIR/build.log" \
 	-cp "$CP" \
 	-H:ConfigurationFileDirectories="$IMG_CONFIG,$HERE/extra-config" \
 	-H:ReflectionConfigurationFiles="$GENCFG" \
+	-H:JNIConfigurationFiles="$GENJNI" \
 	--features=fenixni.KeyStoreProviderFeature \
 	--no-fallback \
 	--add-opens=java.base/java.io=ALL-UNNAMED \
