@@ -41,9 +41,10 @@ be read -- 46 of them, from `java/lang/IllegalStateException` (which Gecko
 throws from `runUiThreadCallback`, and whose absence killed the run a tenth of
 a second after the first paint) to `android/media/MediaCodec`. Names not on the
 class path are dropped, so a framework class atlas does not have is not
-registered, and a JDK name is registered for `FindClass` alone -- giving
-`java.lang.Class` all its methods makes `getClassLoader` reachable, and the
-class loader drags a `JarFile` into the image heap.
+registered, and a JDK name is registered with its constructors only:
+`ThrowNew` needs the `(String)` one, while giving `java.lang.Class` all its
+*methods* makes `getClassLoader` reachable, and the class loader drags a
+`JarFile` into the image heap.
 
 Generated at build time rather than committed: a payload bump adds and removes
 classes, and a stale list is a list that is wrong exactly where it matters.
@@ -205,7 +206,10 @@ def main():
     gecko = [{"name": c.replace("/", "."), "allDeclaredMethods": True,
               "allDeclaredFields": True, "allDeclaredConstructors": True}
              for c in sorted(jni)]
-    gecko += [{"name": c.replace("/", ".")} for c in sorted(jdk)]
+    # ThrowNew looks up (String) after FindClass, so the constructors come too;
+    # they do not pull the class loader in the way the methods do.
+    gecko += [{"name": c.replace("/", "."), "allDeclaredConstructors": True}
+              for c in sorted(jdk)]
     entries += gecko
     for path, data in ((out, entries), (out_jni, gecko)):
         with open(path, "w") as f:
