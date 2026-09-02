@@ -90,6 +90,27 @@ workflow can open that bump as a PR itself.
 For local iteration neither has to be published: `FENIX_SYSROOT_DIR` and
 `FENIX_PAYLOAD_DIR` name unpacked trees and are used as-is.
 
+### A third, optional: the ahead-of-time image
+
+**`fenix-image-arm64.tar.zst`** — Fenix's whole class path compiled by GraalVM's
+`native-image` into one shared library that exports the JNI Invocation API, so
+atlas's `android-translation-layer-image` creates its VM from it and there is no
+class path, no class loading and nothing for CDS to cache. `image/` is the
+build; `.github/workflows/image.yml` runs it.
+
+It has to be built on an **aarch64 machine**: `native-image` cannot
+cross-compile, and every attempt to fake that failed — the phone has no C
+compiler and 7.2 GB against an 8 GB builder, qemu-user runs the builder 38x
+slower, and Houdini does not finish at all. GitHub's `ubuntu-24.04-arm` runners
+are the machine, which is why this exists at all.
+
+`FENIX_IMAGE_TAG` in `build.sh` pins it, blank means no image travels, and a
+click refuses an image built over a different SDK or payload than it ships —
+an image *is* the framework and the class path, so a mismatch would surface as
+a wrong class at run time rather than as a build error. With one bundled, the
+click still carries the JVM and the jars, and `FENIX_VM=image` picks the other
+vehicle.
+
 ## Building
 
     clickable build --arch arm64 --skip-review
@@ -127,6 +148,7 @@ the container" from becoming a silent load failure on the phone.
 | `FENIX_E10S=1` | let Gecko start content processes. The default is single-process, which is also what `user.js` pins. |
 | `FENIX_EXCLUDE=` | class-path jars to leave off. Defaults to `androidx.profileinstaller`, whose startup Initializer asks the AssetManager for `assets/dexopt/baseline.prof` — an asset this APK does not have, and atlas hands `openNonAsset`'s NULL straight to `Asset_openFileDescriptor`. An ART baseline profile is meaningless on a JVM anyway. |
 | `FENIX_JVMOPTS=` | extra JVM options, space separated. |
+| `FENIX_VM=image` | start the ahead-of-time image instead of the bundled HotSpot. Only in a click built with an image pinned; `FENIX_CDS` and `FENIX_EXCLUDE` do nothing there, since there is no class path. |
 
 ## Where everything comes from
 
