@@ -21,6 +21,11 @@ its declared constructors -- `allDeclaredConstructors` rather than a guessed
 `(Context, AttributeSet)`, because the inflater picks between three shapes and a
 guess would register the wrong one silently.
 
+A third, smaller family: **span array types**. `Spannable.getSpans()` does
+`Array.newInstance(type, n)`, and an array class instantiated reflectively has
+to be registered for unsafe allocation -- `RegistrableDomainSpan[]` was an
+`IllegalArgumentException` from inside Compose while the toolbar was drawing.
+
 Generated at build time rather than committed: a payload bump adds and removes
 classes, and a stale list is a list that is wrong exactly where it matters.
 """
@@ -31,14 +36,28 @@ import zipfile
 
 ROOTS = ("android/view/View", "androidx/fragment/app/Fragment")
 
+# Span types get one more registration, of their *array* class. Text.getSpans()
+# does Array.newInstance(type, n), and an array type instantiated reflectively
+# has to be registered for unsafe allocation or the run gets
+#
+#     IllegalArgumentException: Class ...RegistrableDomainSpan[] is instantiated
+#     reflectively but was never registered
+#
+# from inside Compose, i.e. while the toolbar is being drawn. The roots are the
+# marker types every span implements; the name test catches the ones whose
+# marker is in a jar this scan does not see.
+SPAN_ROOTS = ("android/text/style/CharacterStyle", "android/text/style/ParagraphStyle",
+              "android/text/ParcelableSpan", "android/text/NoCopySpan",
+              "android/text/style/UpdateAppearance")
+
 # constant-pool tags whose entries are a fixed number of bytes after the tag
 FIXED = {3: 4, 4: 4, 5: 8, 6: 8, 7: 2, 8: 2, 9: 4, 10: 4, 11: 4, 12: 4,
          15: 3, 16: 2, 17: 4, 18: 4, 19: 2, 20: 2}
 WIDE = (5, 6)  # long and double take two constant-pool slots
 
 
-def class_and_super(data):
-    """(this_class, super_class) as internal names, or None if unparsable."""
+def class_parents(data):
+    """(this_class, [superclass and interfaces]) as internal names, or None."""
     if len(data) < 10 or data[:4] != b"\xca\xfe\xba\xbe":
         return None
     count = struct.unpack_from(">H", data, 8)[0]
@@ -61,13 +80,24 @@ def class_and_super(data):
         i += 2 if tag in WIDE else 1
     this_i, super_i = struct.unpack_from(">HH", data, pos + 2)
     this_name = utf8.get(classref.get(this_i))
-    super_name = utf8.get(classref.get(super_i)) if super_i else None
-    return (this_name, super_name) if this_name else None
+    if not this_name:
+        return None
+    parents = []
+    if super_i:
+        sup = utf8.get(classref.get(super_i))
+        if sup:
+            parents.append(sup)
+    n_ifaces = struct.unpack_from(">H", data, pos + 6)[0]
+    for k in range(n_ifaces):
+        iface = utf8.get(classref.get(struct.unpack_from(">H", data, pos + 8 + 2 * k)[0]))
+        if iface:
+            parents.append(iface)
+    return this_name, parents
 
 
 def main():
     out, jars = sys.argv[1], sys.argv[2:]
-    supers = {}
+    parents = {}
     for jar in jars:
         try:
             zf = zipfile.ZipFile(jar)
@@ -77,39 +107,35 @@ def main():
             for name in zf.namelist():
                 if not name.endswith(".class"):
                     continue
-                pair = class_and_super(zf.read(name))
+                pair = class_parents(zf.read(name))
                 if pair:
-                    supers[pair[0]] = pair[1]
+                    parents[pair[0]] = pair[1]
 
-    # A class is interesting when its superclass chain reaches one of the roots.
-    # Memoised, because these chains are deep and shared.
-    verdict = {}
+    def descends_from(name, roots, seen=None):
+        """Does name reach any of roots through extends or implements?"""
+        if name in roots:
+            return True
+        seen = seen if seen is not None else set()
+        if name in seen:
+            return False
+        seen.add(name)
+        return any(descends_from(p, roots, seen) for p in parents.get(name, ()))
 
-    def wanted(name):
-        chain = []
-        while name is not None and name not in verdict:
-            if name in ROOTS:
-                verdict[name] = True
-                break
-            parent = supers.get(name)
-            if parent is None:          # unknown or java.lang.Object
-                verdict[name] = False
-                break
-            chain.append(name)
-            name = parent
-        answer = verdict.get(name, False)
-        for c in chain:
-            verdict[c] = answer
-        return answer
-
-    picked = sorted(c for c in supers if c not in ROOTS and wanted(c))
+    picked = sorted(c for c in parents
+                    if c not in ROOTS and descends_from(c, ROOTS))
     entries = [{"name": c.replace("/", "."), "allDeclaredConstructors": True}
                for c in picked]
+
+    spans = sorted(c for c in parents
+                   if c.rsplit("/", 1)[-1].endswith("Span")
+                   or descends_from(c, SPAN_ROOTS))
+    entries += [{"name": c.replace("/", ".") + "[]", "unsafeAllocated": True}
+                for c in spans]
     with open(out, "w") as f:
         json.dump(entries, f, indent=2)
         f.write("\n")
-    print(f"reflection: {len(entries)} View and Fragment subclasses "
-          f"out of {len(supers)} classes")
+    print(f"reflection: {len(picked)} View and Fragment subclasses and "
+          f"{len(spans)} span array types, out of {len(parents)} classes")
 
 
 if __name__ == "__main__":
