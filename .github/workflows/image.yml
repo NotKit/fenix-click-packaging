@@ -219,6 +219,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Named after the SDK only. A payload bump with an unchanged SDK
+          # therefore clobbers this asset -- which build.sh turns into a loud
+          # checksum failure rather than a quietly different browser.
           tag="image-${{ steps.pins.outputs.FENIX_SDK_TAG }}"
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" fenix-image-arm64.tar.zst fenix-image-arm64.tar.zst.sha256 --clobber
