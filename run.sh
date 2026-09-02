@@ -13,6 +13,9 @@
 #                       given as the first argument is used the same way.
 #   FENIX_NO_GPU=1      ATL_NO_GPU=1, CPU raster -- the knob to flip first if
 #                       it dies in skia.
+#   FENIX_VM=image      start the GraalVM native image instead of the bundled
+#                       HotSpot: no class path, no class loading, no CDS. Only
+#                       works if the click was built with an image pinned.
 #   FENIX_CDS=off       do not use or write the AppCDS archive (~2 s slower).
 #   FENIX_E10S=1        let Gecko start content processes (default: single
 #                       process, which is what user.js pins).
@@ -41,6 +44,24 @@ esac
 # Prefer the version-independent 'current' path: it is stable across upgrades.
 PKG_ROOT="/opt/click.ubuntu.com/${PKG_NAME}/current"
 [ -x "${PKG_ROOT}/lib/android-translation-layer-hotspot" ] || PKG_ROOT="${APP_DIR}"
+
+# --- which vehicle ----------------------------------------------------------
+# hotspot: the bundled JVM loads 361 jars at every start. image: atlas's
+# android-translation-layer-image creates its VM from libfenix.so, which is the
+# same jars compiled ahead of time -- so there is no class path, nothing to
+# load and nothing for CDS to cache. The image only travels in a click built
+# with one pinned (build.sh's FENIX_IMAGE_TAG).
+FENIX_VM="${FENIX_VM:-hotspot}"
+case "${FENIX_VM}" in
+    hotspot) ;;
+    image)
+        for f in lib/android-translation-layer-image lib/libfenix.so; do
+            [ -e "${PKG_ROOT}/${f}" ] && continue
+            echo "fenix: FENIX_VM=image but this click has no ${f}" >&2
+            exit 2
+        done ;;
+    *) echo "fenix: FENIX_VM must be hotspot or image, not ${FENIX_VM}" >&2; exit 2 ;;
+esac
 
 # --- writable state ---------------------------------------------------------
 # STATE persists across upgrades and reboots and holds the profile; CACHE holds
@@ -113,8 +134,15 @@ fi
 export JAVA_HOME="${PKG_ROOT}/jvm"
 GECKO="${PKG_ROOT}/gecko"
 # libjvm.so is deliberately not in the launcher's RUNPATH. lib/ holds every
-# native object the click carries; gecko/ holds libxul and the NSS set.
-export LD_LIBRARY_PATH="${JAVA_HOME}/lib/server:${PKG_ROOT}/lib:${GECKO}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+# native object the click carries; gecko/ holds libxul and the NSS set. An
+# image is dlopened by absolute path and carries its own runtime, so it needs
+# neither jvm/lib/server nor $JAVA_HOME.
+if [ "${FENIX_VM}" = image ]; then
+    unset JAVA_HOME
+    export LD_LIBRARY_PATH="${PKG_ROOT}/lib:${GECKO}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+else
+    export LD_LIBRARY_PATH="${JAVA_HOME}/lib/server:${PKG_ROOT}/lib:${GECKO}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+fi
 # mozglue's jemalloc has to own the process rather than be dlopened into one
 # that already has glibc malloc, so it is preloaded -- but only into the
 # launcher (see the env at the bottom), never into the shell helpers this script
@@ -136,8 +164,11 @@ TLSPAD=/usr/lib/aarch64-linux-gnu/libtls-padding.so
 # JDK's answer: it keeps the VM's handlers primary and chains the app's behind
 # them. Without it, staying alive means turning the JIT off, and -Xint is what
 # makes this browser feel slow. FENIX_NO_JSIG=1 puts it back for a comparison.
-JSIG="${JAVA_HOME}/lib/libjsig.so"
-if [ -z "${FENIX_NO_JSIG:-}" ] && [ -e "${JSIG}" ]; then
+# An image has no libjsig: Substrate installs its own SIGSEGV handler and
+# nothing chains Gecko's behind it, so this is one of the things to watch when
+# the image path is debugged.
+JSIG="${PKG_ROOT}/jvm/lib/libjsig.so"
+if [ "${FENIX_VM}" != image ] && [ -z "${FENIX_NO_JSIG:-}" ] && [ -e "${JSIG}" ]; then
     PRELOAD="${PRELOAD}:${JSIG}"
 fi
 
@@ -198,6 +229,7 @@ fi
 # openNonAsset's NULL straight to Asset_openFileDescriptor: SIGSEGV ~20 s in.
 # Installing an ART baseline profile is meaningless on a JVM anyway.
 : "${FENIX_EXCLUDE=androidx.profileinstaller}"
+[ "${FENIX_VM}" = image ] && FENIX_EXCLUDE=""
 CPDIR="${PKG_ROOT}/classpath"
 if [ -n "${FENIX_EXCLUDE}" ]; then
     # The farm is a symlink per jar and the package is read-only, so it is built
@@ -242,7 +274,7 @@ CDSOPT=""
 CDSFP=""
 JSA="${CACHE}/app.jsa"
 CDSLOG="${CACHE}/cds.log"
-if [ "${FENIX_CDS:-auto}" != off ]; then
+if [ "${FENIX_VM}" != image ] && [ "${FENIX_CDS:-auto}" != off ]; then
     CDSOPT="-X -XX:+AutoCreateSharedArchive -X -XX:SharedArchiveFile=${JSA}"
     CDSOPT="${CDSOPT} -X -Xlog:cds=warning:file=${CDSLOG}"
     rm -f "${CDSLOG}"
@@ -269,7 +301,7 @@ for o in ${FENIX_JVMOPTS:-}; do JVMX="${JVMX} -X ${o}"; done
 # only place the reason is written down.
 [ -f "${LOG}" ] && mv -f "${LOG}" "${LOG}.1"
 
-echo "fenix: PKG_ROOT=${PKG_ROOT} state=${STATE} cache=${CACHE} log=${LOG} (previous run: ${LOG}.1)"
+echo "fenix: vm=${FENIX_VM} PKG_ROOT=${PKG_ROOT} state=${STATE} cache=${CACHE} log=${LOG} (previous run: ${LOG}.1)"
 
 # Become the browser rather than supervise it. Lomiri addresses the app by the
 # pid it started: the SIGSTOP when it is backgrounded, the SIGCONT, the SIGTERM
@@ -280,7 +312,30 @@ echo "fenix: PKG_ROOT=${PKG_ROOT} state=${STATE} cache=${CACHE} log=${LOG} (prev
 #
 # `env` execs the launcher in turn, so the pid still survives: it is here only
 # to keep LD_PRELOAD off the shell helpers above, which cannot load libmozglue.
+# The image ignores --api-impl-jar and -c with a warning -- it *is* the
+# framework and the class path -- so those are simply not passed. The -XX:
+# options are a different matter and must not be: on an image an unrecognised
+# -XX: makes JNI_CreateJavaVM return JNI_ERR having printed nothing at all, and
+# a second call in the same process hangs, so there is no degrading from it.
 # shellcheck disable=SC2086
+if [ "${FENIX_VM}" = image ]; then
+    exec env LD_PRELOAD="${PRELOAD}" \
+        "${PKG_ROOT}/lib/android-translation-layer-image" "${PKG_ROOT}/fenix.apk" \
+        --vm-library "${PKG_ROOT}/lib/libfenix.so" \
+        --framework-res "${PKG_ROOT}/atlas/framework-res.apk" \
+        --natives-dir "${PKG_ROOT}/lib" \
+        --library-path "${PKG_ROOT}/lib" \
+        --library-path "${GECKO}" \
+        -X "-Djna.boot.library.path=${PKG_ROOT}/lib" \
+        -X "-Djna.library.path=${PKG_ROOT}/lib:${GECKO}" \
+        -X "-Dport.shim.native.path=${PKG_ROOT}/lib/libportshim.so" \
+        -X "-Djava.io.tmpdir=${TMPDIR}" \
+        ${JVMX} \
+        ${FENIX_URI:+-u "${FENIX_URI}"} \
+        --sdk-int "${FENIX_SDK_INT:-28}" \
+        "$@" > "${LOG}" 2>&1
+fi
+
 exec env LD_PRELOAD="${PRELOAD}" \
     "${PKG_ROOT}/lib/android-translation-layer-hotspot" "${PKG_ROOT}/fenix.apk" \
     --api-impl-jar "${PKG_ROOT}/atlas/hax.jar" \

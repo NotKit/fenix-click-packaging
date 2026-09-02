@@ -201,6 +201,47 @@ if ! stamp "jna-$JNA_VERSION"; then
 	done_stamp "jna-$JNA_VERSION"
 fi
 
+# --- 4b. the native image, when one is pinned -------------------------------
+# Fenix's whole class path compiled ahead of time into a shared library that
+# exports the JNI Invocation API, built by .github/workflows/image.yml on an
+# arm64 runner (native-image cannot cross-compile). It is an *addition*: the
+# click still ships the JVM and the jars, and run.sh takes FENIX_VM=image to
+# start atlas's image launcher instead of the HotSpot one.
+#
+# Blank means no image travels. The tag is pinned here rather than passed in
+# because clickable does not forward the environment into its container.
+FENIX_IMAGE_TAG="${FENIX_IMAGE_TAG:-}"
+FENIX_IMAGE_SHA256="${FENIX_IMAGE_SHA256:-}"
+IMAGE_DIR="$BUILD_DIR/image"
+
+if [ -n "${FENIX_IMAGE_DIR:-}" ]; then
+	log "image: using $FENIX_IMAGE_DIR"
+	IMAGE_DIR="$FENIX_IMAGE_DIR"
+elif [ -n "$FENIX_IMAGE_TAG" ]; then
+	stamp "image-$FENIX_IMAGE_TAG" ||
+		unpack_asset image "$FENIX_ASSET_REPO" "fenix-image-${ARCH}.tar.zst" \
+			"$FENIX_IMAGE_TAG" "$FENIX_IMAGE_SHA256" \
+			"$IMAGE_DIR" "libfenix.so"
+	done_stamp "image-$FENIX_IMAGE_TAG"
+else
+	IMAGE_DIR=""
+fi
+
+# An image *is* the framework and the class path, compiled: one built against a
+# different SDK or payload than this click carries is a different browser, and
+# the mismatch would only show as a wrong or missing class at run time.
+if [ -n "$IMAGE_DIR" ]; then
+	[ -f "$IMAGE_DIR/libfenix.so" ] || { echo "no $IMAGE_DIR/libfenix.so" >&2; exit 1; }
+	img_sdk=$(sed -n 's/^sdk=//p' "$IMAGE_DIR/IMAGE.txt" 2>/dev/null)
+	img_payload=$(sed -n 's/^payload=//p' "$IMAGE_DIR/IMAGE.txt" 2>/dev/null)
+	for pair in "sdk:$img_sdk:$FENIX_SDK_TAG" "payload:$img_payload:$FENIX_PAYLOAD_TAG"; do
+		what=${pair%%:*}; rest=${pair#*:}; was=${rest%%:*}; want=${rest#*:}
+		[ -z "$was" ] || [ "$was" = "$want" ] ||
+			{ echo "the image was built over $what $was, this click ships $want" >&2; exit 1; }
+	done
+	log "image: $FENIX_IMAGE_TAG${img_sdk:+, over $img_sdk}"
+fi
+
 # --- 5. assemble the click tree ---------------------------------------------
 
 log "assembling $INSTALL_DIR"
@@ -211,6 +252,13 @@ mkdir -p "$INSTALL_DIR"/{lib,atlas,classpath,gecko}
 # find each other through their $ORIGIN/ RUNPATH, and the SDK prefix the rest of
 # that RUNPATH names does not exist on the device.
 cp "$ATL/bin/android-translation-layer-hotspot" "$INSTALL_DIR/lib/"
+if [ -n "$IMAGE_DIR" ]; then
+	# The image launcher dlopens the .so instead of linking libjvm.so; both live
+	# in lib/ with everything else so $ORIGIN finds them.
+	cp "$ATL/bin/android-translation-layer-image" "$INSTALL_DIR/lib/"
+	cp "$IMAGE_DIR/libfenix.so" "$INSTALL_DIR/lib/"
+	[ ! -f "$IMAGE_DIR/IMAGE.txt" ] || cp "$IMAGE_DIR/IMAGE.txt" "$INSTALL_DIR/"
+fi
 cp "$ATL_NATIVES/libtranslation_layer_main.so" "$INSTALL_DIR/lib/"
 cp -a "$ATL/lib/libandroid.so.0" "$INSTALL_DIR/lib/"
 ln -sfn libandroid.so.0 "$INSTALL_DIR/lib/libandroid.so"
@@ -412,7 +460,10 @@ if [ "${FENIX_SKIP_STRIP:-0}" != 1 ]; then
 	find "$INSTALL_DIR/lib" "$INSTALL_DIR/gecko" -type f \
 		\( -name '*.so' -o -name '*.so.*' \) \
 		-exec "$TRIPLE-strip" --strip-unneeded {} + 2>/dev/null || true
-	"$TRIPLE-strip" --strip-unneeded "$INSTALL_DIR/lib/android-translation-layer-hotspot" 2>/dev/null || true
+	for l in android-translation-layer-hotspot android-translation-layer-image; do
+		[ ! -f "$INSTALL_DIR/lib/$l" ] ||
+			"$TRIPLE-strip" --strip-unneeded "$INSTALL_DIR/lib/$l" 2>/dev/null || true
+	done
 fi
 
 log "verifying the staged tree"
