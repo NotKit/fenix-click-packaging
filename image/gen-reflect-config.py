@@ -21,10 +21,17 @@ roots is registered with all its declared constructors -- `allDeclaredConstructo
 `(Context, AttributeSet)`, because the inflater picks between three shapes and a
 guess would register the wrong one silently.
 
-A third, smaller family: **span array types**. `Spannable.getSpans()` does
+A second family: **span array types**. `Spannable.getSpans()` does
 `Array.newInstance(type, n)`, and an array class instantiated reflectively has
 to be registered for unsafe allocation -- `RegistrableDomainSpan[]` was an
 `IllegalArgumentException` from inside Compose while the toolbar was drawing.
+
+A third: GeckoView's **@WrapForJNI classes**. `NativeQueue` dispatches a queued
+call with `getDeclaredMethod(name, argTypes)`, so the method has to survive by
+name -- `GeckoSession$Window.attachEditable` was a `NoSuchMethodException` the
+moment the first tab opened. Any class carrying one of Gecko's four
+JNI/reflection marker annotations gets its whole surface kept; there are about
+a hundred of them.
 
 Generated at build time rather than committed: a payload bump adds and removes
 classes, and a stale list is a list that is wrong exactly where it matters.
@@ -61,26 +68,40 @@ SPAN_ROOTS = ("android/text/style/CharacterStyle", "android/text/style/Paragraph
               "android/text/ParcelableSpan", "android/text/NoCopySpan",
               "android/text/style/UpdateAppearance")
 
+# Gecko's markers for "this is reached from native code or by name". The
+# annotations are dropped at runtime, but their descriptor stays in the
+# constant pool of every class that uses one, which is enough to find them.
+JNI_MARKERS = ("Lorg/mozilla/gecko/annotation/WrapForJNI;",
+               "Lorg/mozilla/gecko/annotation/JNITarget;",
+               "Lorg/mozilla/gecko/annotation/ReflectionTarget;",
+               "Lorg/mozilla/gecko/annotation/WebRTCJNITarget;")
+
 # constant-pool tags whose entries are a fixed number of bytes after the tag
 FIXED = {3: 4, 4: 4, 5: 8, 6: 8, 7: 2, 8: 2, 9: 4, 10: 4, 11: 4, 12: 4,
          15: 3, 16: 2, 17: 4, 18: 4, 19: 2, 20: 2}
 WIDE = (5, 6)  # long and double take two constant-pool slots
 
 
-def class_parents(data):
-    """(this_class, [superclass and interfaces]) as internal names, or None."""
+def read_class(data):
+    """(this_class, [superclass and interfaces], marked) or None.
+
+    `marked` is true when the constant pool mentions one of JNI_MARKERS.
+    """
     if len(data) < 10 or data[:4] != b"\xca\xfe\xba\xbe":
         return None
     count = struct.unpack_from(">H", data, 8)[0]
     utf8 = {}
     classref = {}
+    marked = False
     i, pos = 1, 10
     while i < count:
         tag = data[pos]
         pos += 1
         if tag == 1:
             n = struct.unpack_from(">H", data, pos)[0]
-            utf8[i] = data[pos + 2:pos + 2 + n].decode("utf-8", "replace")
+            s = data[pos + 2:pos + 2 + n].decode("utf-8", "replace")
+            utf8[i] = s
+            marked = marked or s in JNI_MARKERS
             pos += 2 + n
         elif tag in FIXED:
             if tag == 7:
@@ -103,12 +124,13 @@ def class_parents(data):
         iface = utf8.get(classref.get(struct.unpack_from(">H", data, pos + 8 + 2 * k)[0]))
         if iface:
             parents.append(iface)
-    return this_name, parents
+    return this_name, parents, marked
 
 
 def main():
     out, jars = sys.argv[1], sys.argv[2:]
     parents = {}
+    jni = set()
     for jar in jars:
         try:
             zf = zipfile.ZipFile(jar)
@@ -118,9 +140,12 @@ def main():
             for name in zf.namelist():
                 if not name.endswith(".class"):
                     continue
-                pair = class_parents(zf.read(name))
-                if pair:
-                    parents[pair[0]] = pair[1]
+                info = read_class(zf.read(name))
+                if not info:
+                    continue
+                parents[info[0]] = info[1]
+                if info[2]:
+                    jni.add(info[0])
 
     def descends_from(name, roots, seen=None):
         """Does name reach any of roots through extends or implements?"""
@@ -142,11 +167,16 @@ def main():
                    or descends_from(c, SPAN_ROOTS))
     entries += [{"name": c.replace("/", ".") + "[]", "unsafeAllocated": True}
                 for c in spans]
+
+    entries += [{"name": c.replace("/", "."), "allDeclaredMethods": True,
+                 "allDeclaredFields": True, "allDeclaredConstructors": True}
+                for c in sorted(jni)]
     with open(out, "w") as f:
         json.dump(entries, f, indent=2)
         f.write("\n")
-    print(f"reflection: {len(picked)} name-instantiated classes and "
-          f"{len(spans)} span array types, out of {len(parents)} classes")
+    print(f"reflection: {len(picked)} name-instantiated classes, "
+          f"{len(spans)} span array types and {len(jni)} Gecko JNI classes, "
+          f"out of {len(parents)} classes")
 
 
 if __name__ == "__main__":
