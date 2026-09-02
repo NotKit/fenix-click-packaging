@@ -210,8 +210,8 @@ fi
 #
 # Blank means no image travels. The tag is pinned here rather than passed in
 # because clickable does not forward the environment into its container.
-FENIX_IMAGE_TAG="${FENIX_IMAGE_TAG:-image-sdk-894035d-b17caa1}"
-FENIX_IMAGE_SHA256="${FENIX_IMAGE_SHA256:-fd77e610251cea2ece0a199db7b724930820e78439d82c126dc2ec093f01fd9e}"
+FENIX_IMAGE_TAG="${FENIX_IMAGE_TAG:-image-sdk-894035d-69ba4d9}"
+FENIX_IMAGE_SHA256="${FENIX_IMAGE_SHA256:-8aba7ad372569ae015422cd101d029fb4dd6c6fe2bab2b5fb21699e72f4be175}"
 IMAGE_DIR="$BUILD_DIR/image"
 
 if [ -n "${FENIX_IMAGE_DIR:-}" ]; then
