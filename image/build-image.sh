@@ -11,7 +11,7 @@
 # native-image cannot cross-compile: the image is always for the machine the
 # builder runs on, and every input here (the jars, the shim, the traced JSON) is
 # architecture-neutral. So an aarch64 image is this script on an aarch64 machine
-# with ~16 GB and a C toolchain -- which is what .github/workflows/image.yml
+# with ~16 GB and a C toolchain -- which is what build.yml's image job
 # rents from GitHub's arm64 runners. Do not try to fake it: qemu-user runs the
 # builder 38x slower and Houdini does not finish at all (firefox-atl
 # jvm-run/image/NOTES.md has the numbers).

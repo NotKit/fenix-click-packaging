@@ -7,10 +7,200 @@ on:
   workflow_dispatch:
 
 jobs:
+  # native-image cannot cross-compile, and the click job below is x86_64 (it
+  # cross-builds arm64 inside clickable's container), so the image is built
+  # here on an arm64 runner and handed over as an artifact.
+  #
+  # This used to be a workflow of its own publishing a release asset that
+  # build.sh pinned by sha256. That pin made every atlas bump a two-commit
+  # dance -- bump the SDK, dispatch an image build, bump the image -- with a
+  # failing click build in between, and it made a rebuild of an old image
+  # dangerous, since a republish broke whichever click pinned the old hash.
+  # The cache key below is the same set of inputs that pin expressed.
+  image:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    env:
+      GRAALVM_VERSION: "21.0.2"
+      IMG_XMX: "10g"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve the pinned inputs
+        id: pins
+        run: |
+          eval "$(grep -E '^FENIX_(SDK|PAYLOAD)_(TAG|SHA256)=|^FENIX_(SDK|ASSET)_REPO=' build.sh)"
+          for v in FENIX_SDK_REPO FENIX_ASSET_REPO FENIX_SDK_TAG FENIX_SDK_SHA256 \
+                   FENIX_PAYLOAD_TAG FENIX_PAYLOAD_SHA256; do
+            echo "$v=${!v}" >>"$GITHUB_OUTPUT"
+          done
+          # git's own tree objects for the two directories that feed the build:
+          # they change when its inputs do and not otherwise.
+          echo "IMAGE_REV=$(git rev-parse HEAD:image | cut -c1-7)" >>"$GITHUB_OUTPUT"
+          echo "SHIM_REV=$(git rev-parse HEAD:shim | cut -c1-7)" >>"$GITHUB_OUTPUT"
+          echo "sdk $FENIX_SDK_TAG, payload $FENIX_PAYLOAD_TAG"
+
+      # A hit skips the whole body, the ~1 GB payload download included. The
+      # five things in this key are the only inputs libfenix.so has: the
+      # framework, the class path, the metadata, the shim and the compiler.
+      - name: Cache the image
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: pkg
+          key: fenix-image-${{ steps.pins.outputs.FENIX_SDK_TAG }}-${{ steps.pins.outputs.FENIX_PAYLOAD_TAG }}-${{ steps.pins.outputs.IMAGE_REV }}-${{ steps.pins.outputs.SHIM_REV }}-graal${{ env.GRAALVM_VERSION }}
+
+      - name: Free disk space
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/.ghcup /usr/local/share/boost || true
+          df -h /
+          echo "cpus: $(nproc), memory:"; free -g
+
+      # native-image links the image with the system toolchain, so a C compiler
+      # and zlib's headers are not optional -- this is the exact pair the phone
+      # does not have.
+      - name: Install build dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            build-essential zlib1g-dev zstd unzip curl file
+
+      - name: Cache the downloads
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v4
+        with:
+          path: dl
+          key: image-dl-${{ steps.pins.outputs.FENIX_SDK_TAG }}-${{ steps.pins.outputs.FENIX_PAYLOAD_TAG }}-${{ env.GRAALVM_VERSION }}
+
+      - name: Install GraalVM CE ${{ env.GRAALVM_VERSION }} for aarch64
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p dl
+          f="graalvm-community-jdk-${GRAALVM_VERSION}_linux-aarch64_bin.tar.gz"
+          [ -f "dl/$f" ] || curl -Lf --retry 3 -o "dl/$f" \
+            "https://github.com/graalvm/graalvm-ce-builds/releases/download/jdk-${GRAALVM_VERSION}/$f"
+          mkdir -p graalvm && tar -C graalvm --strip-components=1 -xzf "dl/$f"
+          echo "GRAALVM_HOME=$PWD/graalvm" >>"$GITHUB_ENV"
+          ./graalvm/bin/native-image --version
+
+      - name: Fetch the SDK and the payload
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          get() { # get <repo> <tag> <file> <sha256>
+            local out="dl/$2-$3"
+            [ -f "$out" ] || curl -Lf --retry 3 -o "$out" \
+              "https://github.com/$1/releases/download/$2/$3"
+            # the check's own "OK" would otherwise land in the captured path
+            [ -z "$4" ] || echo "$4  $out" | sha256sum -c - >&2
+            echo "$out"
+          }
+          sdk=$(get "${{ steps.pins.outputs.FENIX_SDK_REPO }}" \
+                    "${{ steps.pins.outputs.FENIX_SDK_TAG }}" \
+                    "atl-sdk-arm64.tar.zst" "${{ steps.pins.outputs.FENIX_SDK_SHA256 }}")
+          payload=$(get "${{ steps.pins.outputs.FENIX_ASSET_REPO }}" \
+                    "${{ steps.pins.outputs.FENIX_PAYLOAD_TAG }}" \
+                    "fenix-jvm-payload-arm64.tar.zst" "${{ steps.pins.outputs.FENIX_PAYLOAD_SHA256 }}")
+          mkdir -p in/sdk in/payload
+          zstd -dc "$sdk" | tar -C in/sdk -x
+          zstd -dc "$payload" | tar -C in/payload -x
+          test -f in/sdk/usr/lib/java/api-impl_classes.jar
+          test -d in/payload/classpath
+          echo "classpath: $(ls in/payload/classpath/*.jar | wc -l) jars"
+          df -h /
+
+      # The shim is the classes ART's boot class path has and a JDK lacks. The
+      # jar is architecture-neutral; libportshim.so is built here too and thrown
+      # away, since the image only needs the classes.
+      - name: Build the compat shim
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: JAVA_HOME="$GRAALVM_HOME" ./shim/build.sh "$PWD/out"
+
+      - name: Build the image
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          HAX="$PWD/in/sdk/usr/lib/java/api-impl_classes.jar" \
+          SHIMJAR="$PWD/out/shim.jar" \
+          APPCP="$PWD/in/payload/classpath" \
+          OUTDIR="$PWD/out/image" \
+          ./image/build-image.sh
+
+      # IMAGE.txt travels with the .so and is what build.sh checks the SDK and
+      # payload against, so a cached image still says what it was built over.
+      - name: Package the image
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p pkg
+          cp out/image/libfenix.so pkg/
+          {
+            echo "sdk=${{ steps.pins.outputs.FENIX_SDK_TAG }}"
+            echo "payload=${{ steps.pins.outputs.FENIX_PAYLOAD_TAG }}"
+            echo "graalvm=$GRAALVM_VERSION"
+            echo "built=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "run=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } >pkg/IMAGE.txt
+          ls -l pkg
+
+      # Wall clock and peak RSS are the numbers that decide whether this runner
+      # can host the build at all, so they go in the summary rather than being
+      # buried in a log.
+      - name: Report
+        if: always()
+        run: |
+          {
+            echo "## native-image on $(uname -m)"
+            echo
+            if [ "${{ steps.cache.outputs.cache-hit }}" = "true" ]; then
+              echo "Cache hit, not rebuilt. It was built over:"
+              echo
+              echo '```'
+              cat pkg/IMAGE.txt 2>/dev/null
+              echo '```'
+            else
+              echo "sdk \`${{ steps.pins.outputs.FENIX_SDK_TAG }}\`, payload \`${{ steps.pins.outputs.FENIX_PAYLOAD_TAG }}\`, image rev \`${{ steps.pins.outputs.IMAGE_REV }}\`"
+              echo
+              for s in out/image/build-stats.env; do
+                [ -f "$s" ] || continue
+                . "$s"
+                echo "* \`$s\`: ${elapsed_s}s wall, $((peak_rss_kb / 1024)) MB peak RSS, status $status"
+              done
+              [ -f pkg/libfenix.so ] && echo "* \`libfenix.so\`: $(stat -c%s pkg/libfenix.so) bytes"
+              echo
+              echo '<details><summary>builder tail</summary>'
+              echo
+              echo '```'
+              tail -60 out/image/build.log 2>/dev/null || true
+              echo '```'
+              echo '</details>'
+            fi
+          } >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the build logs
+        if: always() && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-logs
+          path: |
+            out/image/*.log
+            out/image/*.env
+            out/image/*-argv.txt
+          if-no-files-found: warn
+
+      - name: Upload the image
+        uses: actions/upload-artifact@v4
+        with:
+          name: fenix-image-arm64
+          path: pkg
+          if-no-files-found: error
+
   build:
     # An ordinary x86_64 runner. Both heavy inputs -- atlas's SDK and the Gecko
     # payload -- are prebuilt release assets, so this job assembles rather than
     # compiles.
+    needs: image
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     permissions:
@@ -19,6 +209,15 @@ jobs:
       CLICKABLE_NON_INTERACTIVE: "1"
     steps:
       - uses: actions/checkout@v4
+
+      # clickable does not forward the environment into its container, so the
+      # image cannot be pointed at with a variable; build.sh looks for this
+      # path, which the repo bind mount makes visible inside the container.
+      - name: Take the image from the image job
+        uses: actions/download-artifact@v4
+        with:
+          name: fenix-image-arm64
+          path: prebuilt/image
 
       - name: Free disk space
         run: |

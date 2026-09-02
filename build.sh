@@ -203,20 +203,33 @@ fi
 
 # --- 4b. the native image, when one is pinned -------------------------------
 # Fenix's whole class path compiled ahead of time into a shared library that
-# exports the JNI Invocation API, built by .github/workflows/image.yml on an
-# arm64 runner (native-image cannot cross-compile). It is an *addition*: the
-# click still ships the JVM and the jars, and run.sh takes FENIX_VM=image to
-# start atlas's image launcher instead of the HotSpot one.
+# exports the JNI Invocation API, built by the image job in
+# .github/workflows/build.yml on an arm64 runner, since native-image cannot
+# cross-compile. It is an *addition*: the click still ships the JVM and the
+# jars, and run.sh takes FENIX_VM=image to start atlas's image launcher
+# instead of the HotSpot one.
 #
-# Blank means no image travels. The tag is pinned here rather than passed in
-# because clickable does not forward the environment into its container.
-FENIX_IMAGE_TAG="${FENIX_IMAGE_TAG:-image-sdk-4c0d4c7-69ba4d9}"
-FENIX_IMAGE_SHA256="${FENIX_IMAGE_SHA256:-e2186ae7ed36c462925cf2e5b22a7e7ed437db24e840bb5581239c087b9ed7ae}"
+# Where it comes from, in order:
+#   FENIX_IMAGE_DIR   an explicit directory, for running build.sh directly
+#   prebuilt/image    where CI's image job leaves its artifact. clickable does
+#                     not forward the environment into its container, so the
+#                     path cannot be passed in; the repo bind mount is how it
+#                     gets here.
+#   FENIX_IMAGE_TAG   a published image, for building on a machine that cannot
+#                     make one. Empty by default: a pinned tag has to be bumped
+#                     in lockstep with the SDK, which made every atlas bump two
+#                     commits with a failing build in between.
+# Nothing found means no image travels and the click is HotSpot-only.
+FENIX_IMAGE_TAG="${FENIX_IMAGE_TAG:-}"
+FENIX_IMAGE_SHA256="${FENIX_IMAGE_SHA256:-}"
 IMAGE_DIR="$BUILD_DIR/image"
 
 if [ -n "${FENIX_IMAGE_DIR:-}" ]; then
 	log "image: using $FENIX_IMAGE_DIR"
 	IMAGE_DIR="$FENIX_IMAGE_DIR"
+elif [ -f "$ROOT/prebuilt/image/libfenix.so" ]; then
+	log "image: using prebuilt/image"
+	IMAGE_DIR="$ROOT/prebuilt/image"
 elif [ -n "$FENIX_IMAGE_TAG" ]; then
 	stamp "image-$FENIX_IMAGE_TAG" ||
 		unpack_asset image "$FENIX_ASSET_REPO" "fenix-image-${ARCH}.tar.zst" \
@@ -239,7 +252,7 @@ if [ -n "$IMAGE_DIR" ]; then
 		[ -z "$was" ] || [ "$was" = "$want" ] ||
 			{ echo "the image was built over $what $was, this click ships $want" >&2; exit 1; }
 	done
-	log "image: $FENIX_IMAGE_TAG${img_sdk:+, over $img_sdk}"
+	log "image: ${img_sdk:+over $img_sdk, }${img_payload:+$img_payload}"
 fi
 
 # --- 5. assemble the click tree ---------------------------------------------

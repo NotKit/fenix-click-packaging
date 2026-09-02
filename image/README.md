@@ -23,7 +23,8 @@ about 16 GB and a C toolchain — nothing more, but nothing less. That machine
 was the blocker for a month: the phone has `ld` and `objcopy` but no C compiler
 and 7.2 GB against a builder that peaks at 8 GB, qemu-user runs the builder
 **38x** slower, and Houdini does not finish at all. GitHub's `ubuntu-24.04-arm`
-runners are the machine, and `.github/workflows/image.yml` is how it is rented.
+runners are the machine, and the `image` job in `.github/workflows/build.yml`
+is how it is rented.
 
 `firefox-atl`'s `jvm-run/image/NOTES.md` has the measurements behind all of
 that, and is the long-form account of everything here.

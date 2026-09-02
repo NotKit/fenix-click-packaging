@@ -96,7 +96,7 @@ For local iteration neither has to be published: `FENIX_SYSROOT_DIR` and
 `native-image` into one shared library that exports the JNI Invocation API, so
 atlas's `android-translation-layer-image` creates its VM from it and there is no
 class path, no class loading and nothing for CDS to cache. `image/` is the
-build; `.github/workflows/image.yml` runs it.
+build; the `image` job in `.github/workflows/build.yml` runs it.
 
 It has to be built on an **aarch64 machine**: `native-image` cannot
 cross-compile, and every attempt to fake that failed — the phone has no C

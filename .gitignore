@@ -12,3 +12,6 @@ dist/
 /gecko/android-libs-shim/libjnigraphics.so
 /gecko/android-libs-shim/libmediandk.so
 /gecko/atlas-libandroid-arm64.so
+
+# CI's image job drops libfenix.so here for build.sh to pick up (build.yml).
+/prebuilt/
