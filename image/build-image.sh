@@ -206,6 +206,9 @@ python3 "$HERE/gen-reflect-config.py" "$GENCFG" "$GENJNI" "$XUL" "$HAX" "$SHIMJA
 # SDK_INT is a static final int: initialised at build time it is constant-folded
 # into every "SDK_INT >= N" branch in the app and no run-time -D can undo it.
 INIT_RT="android.os.Build\$VERSION,android.os.SystemProperties"
+# SwipeRefreshLayout's <clinit> is `LOG_TAG = getSimpleName()`, which on the
+# builder reaches the app class loader and puts its JarFile in the image heap.
+INIT_RT="$INIT_RT,androidx.swiperefreshlayout.widget.SwipeRefreshLayout"
 [ -z "${IMG_INIT_AT_RUNTIME:-}" ] || INIT_RT="$INIT_RT,$IMG_INIT_AT_RUNTIME"
 
 # native-image's default policy is run-time initialisation for everything it has
