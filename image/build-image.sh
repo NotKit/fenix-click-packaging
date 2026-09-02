@@ -138,6 +138,27 @@ done
 mapfile -t JARS < <(find "$APPCP" -maxdepth 1 -name '*.jar' | sort)
 [ "${#JARS[@]}" -ge 100 ] || { echo "only ${#JARS[@]} jars in $APPCP" >&2; exit 1; }
 
+# run.sh drops these jars from the HotSpot class path at run time; an image has
+# no class path to drop them from, so they have to go here or not at all.
+# androidx.profileinstaller's startup Initializer asks the AssetManager for
+# assets/dexopt/baseline.prof, which this APK does not have, and atlas hands
+# openNonAsset's NULL straight to Asset_openFileDescriptor: SIGSEGV. An ART
+# baseline profile is meaningless on this runtime anyway. Keep this in step with
+# run.sh's FENIX_EXCLUDE.
+: "${IMG_EXCLUDE:=androidx.profileinstaller}"
+if [ -n "$IMG_EXCLUDE" ]; then
+	kept=()
+	for j in "${JARS[@]}"; do
+		skip=""
+		for pat in $IMG_EXCLUDE; do
+			case "${j##*/}" in *"$pat"*) skip=1 ;; esac
+		done
+		[ -n "$skip" ] && { echo "excluded from the image: ${j##*/}"; continue; }
+		kept+=("$j")
+	done
+	JARS=("${kept[@]}")
+fi
+
 # gapclasses/: android.* types atlas lacked that a closed world has to resolve
 # anyway. Both are in atlas as of 8815f1d7, so an SDK new enough to carry them
 # makes this directory dead weight -- and a stub shadowing a real class would be
