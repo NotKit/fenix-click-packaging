@@ -3,21 +3,21 @@
 
     gen-reflect-config.py <out.json> <jar> [<jar> ...]
 
-Two whole families of class are invisible to both the tracing agent and the
-closed-world analysis, because nothing in the bytecode names them:
-
-  * every **View**, inflated by `LayoutInflater` from a name in a layout XML;
-  * every **Fragment**, instantiated by `FragmentFactory.loadFragmentClass`
-    from a name in the navigation graph.
+Whole families of class are invisible to both the tracing agent and the
+closed-world analysis, because nothing in the bytecode names them: every
+**View** the layout inflater builds from a layout XML, every **Fragment**
+`FragmentFactory.loadFragmentClass` builds from the navigation graph, every
+**ViewModel** `ViewModelProvider` builds from a class literal, every
+**Preference**, and the four component types the manifest names. `ROOTS` below
+is the list, and each entry was added because a run died on it.
 
 A miss is a `ClassNotFoundException` at the moment the user opens that screen,
 which is the worst possible place to find one -- `org.mozilla.fenix.browser.
 SwipeGestureLayout` and `org.mozilla.fenix.browser.BrowserFragment` were the
 first two, and they are the browser itself.
 
-So the class hierarchy is read out of the jars and every descendant of
-`android.view.View` and `androidx.fragment.app.Fragment` is registered with all
-its declared constructors -- `allDeclaredConstructors` rather than a guessed
+So the class hierarchy is read out of the jars and every descendant of those
+roots is registered with all its declared constructors -- `allDeclaredConstructors` rather than a guessed
 `(Context, AttributeSet)`, because the inflater picks between three shapes and a
 guess would register the wrong one silently.
 
@@ -34,7 +34,18 @@ import struct
 import sys
 import zipfile
 
-ROOTS = ("android/view/View", "androidx/fragment/app/Fragment")
+# Everything Android builds from a name rather than from a `new`.
+ROOTS = (
+    "android/view/View",                # the layout inflater, from a layout XML
+    "androidx/fragment/app/Fragment",   # FragmentFactory, from the nav graph
+    "androidx/lifecycle/ViewModel",     # ViewModelProvider, from a class literal
+    "androidx/preference/Preference",   # the preference inflater, from an XML
+    "android/app/Activity",             # the manifest
+    "android/app/Service",
+    "android/app/Application",
+    "android/content/BroadcastReceiver",
+    "android/content/ContentProvider",
+)
 
 # Span types get one more registration, of their *array* class. Text.getSpans()
 # does Array.newInstance(type, n), and an array type instantiated reflectively
@@ -134,7 +145,7 @@ def main():
     with open(out, "w") as f:
         json.dump(entries, f, indent=2)
         f.write("\n")
-    print(f"reflection: {len(picked)} View and Fragment subclasses and "
+    print(f"reflection: {len(picked)} name-instantiated classes and "
           f"{len(spans)} span array types, out of {len(parents)} classes")
 
 
