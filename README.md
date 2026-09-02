@@ -107,9 +107,17 @@ are the machine, which is why this exists at all.
 `FENIX_IMAGE_TAG` in `build.sh` pins it, blank means no image travels, and a
 click refuses an image built over a different SDK or payload than it ships —
 an image *is* the framework and the class path, so a mismatch would surface as
-a wrong class at run time rather than as a build error. With one bundled, the
-click still carries the JVM and the jars, and `FENIX_VM=image` picks the other
-vehicle.
+a wrong class at run time rather than as a build error.
+
+**A click that carries an image starts it by default.** `run.sh` picks the
+vehicle by looking for `lib/libfenix.so`, so a click built without one falls
+back to HotSpot on its own and `FENIX_VM` is only needed to override the
+choice. The JVM and the 361 jars still travel either way, and `FENIX_VM=hotspot`
+runs them. Measured on the oneplus11 at click `sdk-0fb6e4d`, first frame /
+first contentful paint: image **2.50 / 3.57 s**, HotSpot with a warm archive
+**2.45 / 4.12 s**, HotSpot with none **8.56 / 12.20 s** — and that last column
+is what every upgrade costs the HotSpot vehicle, since a new install renews
+each jar's mtime and invalidates the archive until a clean exit writes another.
 
 ## Building
 
@@ -148,7 +156,7 @@ the container" from becoming a silent load failure on the phone.
 | `FENIX_E10S=1` | let Gecko start content processes. The default is single-process, which is also what `user.js` pins. |
 | `FENIX_EXCLUDE=` | class-path jars to leave off. Defaults to `androidx.profileinstaller`, whose startup Initializer asks the AssetManager for `assets/dexopt/baseline.prof` — an asset this APK does not have, and atlas hands `openNonAsset`'s NULL straight to `Asset_openFileDescriptor`. An ART baseline profile is meaningless on a JVM anyway. |
 | `FENIX_JVMOPTS=` | extra JVM options, space separated. |
-| `FENIX_VM=image` | start the ahead-of-time image instead of the bundled HotSpot. Only in a click built with an image pinned; `FENIX_CDS` and `FENIX_EXCLUDE` do nothing there, since there is no class path. |
+| `FENIX_VM=hotspot` | start the bundled HotSpot instead of the ahead-of-time image. The image is the default in any click built with one pinned; `FENIX_CDS` and `FENIX_EXCLUDE` do nothing there, since it has no class path. `FENIX_VM=image` is accepted too, and fails loudly in a click that carries no image. |
 
 ## Where everything comes from
 

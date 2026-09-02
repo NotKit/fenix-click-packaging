@@ -13,9 +13,10 @@
 #                       given as the first argument is used the same way.
 #   FENIX_NO_GPU=1      ATL_NO_GPU=1, CPU raster -- the knob to flip first if
 #                       it dies in skia.
-#   FENIX_VM=image      start the GraalVM native image instead of the bundled
-#                       HotSpot: no class path, no class loading, no CDS. Only
-#                       works if the click was built with an image pinned.
+#   FENIX_VM=hotspot    start the bundled HotSpot instead of the GraalVM native
+#                       image: 361 jars, class loading and an AppCDS archive.
+#                       The image is the default when the click carries one,
+#                       and is the only vehicle this knob is needed to leave.
 #   FENIX_CDS=off       do not use or write the AppCDS archive (~2 s slower).
 #   FENIX_E10S=1        let Gecko start content processes (default: single
 #                       process, which is what user.js pins).
@@ -51,7 +52,21 @@ PKG_ROOT="/opt/click.ubuntu.com/${PKG_NAME}/current"
 # same jars compiled ahead of time -- so there is no class path, nothing to
 # load and nothing for CDS to cache. The image only travels in a click built
 # with one pinned (build.sh's FENIX_IMAGE_TAG).
-FENIX_VM="${FENIX_VM:-hotspot}"
+#
+# The image is the default wherever it is present. It matches warm HotSpot to
+# the first frame and beats it to first paint, and unlike HotSpot it has no
+# archive to lose: an upgrade renews every jar's mtime, which invalidates the
+# AppCDS archive and costs about six seconds on the runs before a clean exit
+# writes a new one. A click built with no image pinned has only the one
+# vehicle and takes it silently.
+if [ -z "${FENIX_VM:-}" ]; then
+    if [ -e "${PKG_ROOT}/lib/android-translation-layer-image" ] &&
+       [ -e "${PKG_ROOT}/lib/libfenix.so" ]; then
+        FENIX_VM=image
+    else
+        FENIX_VM=hotspot
+    fi
+fi
 case "${FENIX_VM}" in
     hotspot) ;;
     image)
