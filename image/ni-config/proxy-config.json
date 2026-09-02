@@ -1,0 +1,8 @@
+[
+  {
+    "interfaces":["android.app.Application$ActivityLifecycleCallbacks"]
+  },
+  {
+    "interfaces":["mozilla.appservices.viaduct.UniffiCallbackFunction"]
+  }
+]

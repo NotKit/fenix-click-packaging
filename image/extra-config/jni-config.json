@@ -1,0 +1,16 @@
+[
+  {
+    "name": "org.mozilla.fenix.HomeActivity",
+    "methods": [
+      {
+        "name": "onBackPressed",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "android.view.ViewGroup",
+    "allDeclaredMethods": true,
+    "allPublicMethods": true
+  }
+]

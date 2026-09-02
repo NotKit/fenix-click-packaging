@@ -1,0 +1,1346 @@
+[
+{
+  "name":"[B"
+},
+{
+  "name":"[C"
+},
+{
+  "name":"[F"
+},
+{
+  "name":"[I"
+},
+{
+  "name":"[J"
+},
+{
+  "name":"[Landroid.text.Layout$Directions;"
+},
+{
+  "name":"[Landroid.text.SpanWatcher;"
+},
+{
+  "name":"[Landroid.text.style.AlignmentSpan;"
+},
+{
+  "name":"[Landroid.text.style.CharacterStyle;"
+},
+{
+  "name":"[Landroid.text.style.LeadingMarginSpan;"
+},
+{
+  "name":"[Landroid.text.style.LineBackgroundSpan;"
+},
+{
+  "name":"[Landroid.text.style.LineHeightSpan;"
+},
+{
+  "name":"[Landroid.text.style.MetricAffectingSpan;"
+},
+{
+  "name":"[Landroid.text.style.ParagraphStyle;"
+},
+{
+  "name":"[Landroid.text.style.ReplacementSpan;"
+},
+{
+  "name":"[Landroid.text.style.TabStopSpan;"
+},
+{
+  "name":"[Landroidx.compose.ui.text.android.style.LineHeightStyleSpan;"
+},
+{
+  "name":"[Landroidx.compose.ui.text.android.style.PlaceholderSpan;"
+},
+{
+  "name":"[Ljava.lang.Object;"
+},
+{
+  "name":"[Lmozilla.components.browser.state.state.content.DownloadState$Status;"
+},
+{
+  "name":"[Lmozilla.components.concept.engine.prompt.ShareData;"
+},
+{
+  "name":"[Lmozilla.components.feature.addons.Addon;"
+},
+{
+  "name":"[Lorg.mozilla.fenix.library.history.History;"
+},
+{
+  "name":"[Lorg.mozilla.fenix.wallpapers.Wallpaper$ImageType;"
+},
+{
+  "name":"[[I"
+},
+{
+  "name":"android.app.ActivityThread",
+  "fields":[{"name":"mH"}]
+},
+{
+  "name":"android.app.ViewStub"
+},
+{
+  "name":"android.app.usage.StorageStatsManager",
+  "queryAllPublicConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"android.content.pm.ShortcutManager",
+  "queryAllPublicConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"android.content.res.Resources$Theme",
+  "methods":[{"name":"rebase","parameterTypes":[] }]
+},
+{
+  "name":"android.database.sqlite.SQLiteDatabase",
+  "methods":[{"name":"getThreadSession","parameterTypes":[] }]
+},
+{
+  "name":"android.database.sqlite.SQLiteSession",
+  "methods":[{"name":"beginTransaction","parameterTypes":["int","android.database.sqlite.SQLiteTransactionListener","int","android.os.CancellationSignal"] }]
+},
+{
+  "name":"android.os.Build"
+},
+{
+  "name":"android.os.Build$VERSION",
+  "fields":[{"name":"SDK_INT"}]
+},
+{
+  "name":"android.os.Handler",
+  "methods":[{"name":"createAsync","parameterTypes":["android.os.Looper"] }]
+},
+{
+  "name":"android.os.SystemProperties",
+  "methods":[{"name":"getBoolean","parameterTypes":["java.lang.String","boolean"] }]
+},
+{
+  "name":"android.os.Trace",
+  "fields":[{"name":"TRACE_TAG_APP"}],
+  "methods":[{"name":"isTagEnabled","parameterTypes":["long"] }]
+},
+{
+  "name":"android.security.keystore.AndroidKeyStore",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"android.security.keystore.KeyGenerator$AES",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"android.support.v4.app.Fragment"
+},
+{
+  "name":"android.view.View",
+  "methods":[{"name":"getViewRootImpl","parameterTypes":[] }]
+},
+{
+  "name":"android.view.View$AttachInfo"
+},
+{
+  "name":"android.view.ViewStub",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","android.util.AttributeSet"] }]
+},
+{
+  "name":"android.view.WindowInsets",
+  "fields":[{"name":"CONSUMED"}]
+},
+{
+  "name":"android.view.WindowManagerGlobal",
+  "fields":[{"name":"mViews"}],
+  "methods":[{"name":"getInstance","parameterTypes":[] }]
+},
+{
+  "name":"android.view.autofill.AutofillManager",
+  "queryAllPublicConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"android.view.inputmethod.InputMethodManager",
+  "fields":[{"name":"mCurRootView"}]
+},
+{
+  "name":"android.webkit.ViewStub"
+},
+{
+  "name":"android.widget.FrameLayout",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","android.util.AttributeSet"] }]
+},
+{
+  "name":"android.widget.ViewStub"
+},
+{
+  "name":"androidx.appcompat.widget.ContentFrameLayout",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","android.util.AttributeSet"] }]
+},
+{
+  "name":"androidx.appcompat.widget.FitWindowsLinearLayout",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","android.util.AttributeSet"] }, {"name":"makeOptionalFitsSystemWindows","parameterTypes":[] }]
+},
+{
+  "name":"androidx.appcompat.widget.ViewStubCompat",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","android.util.AttributeSet"] }]
+},
+{
+  "name":"androidx.compose.ui.platform.AndroidCompositionLocals_androidKt",
+  "methods":[{"name":"getLocalSavedStateRegistryOwner","parameterTypes":[] }]
+},
+{
+  "name":"androidx.compose.ui.platform.ComposeView",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","android.util.AttributeSet"] }]
+},
+{
+  "name":"androidx.compose.ui.platform.LifecycleRetainedValuesStoreOwner",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"androidx.concurrent.futures.AbstractResolvableFuture",
+  "fields":[{"name":"listeners"}, {"name":"value"}, {"name":"waiters"}]
+},
+{
+  "name":"androidx.concurrent.futures.AbstractResolvableFuture$Waiter",
+  "fields":[{"name":"next"}, {"name":"thread"}]
+},
+{
+  "name":"androidx.core.content.FileProvider",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"androidx.datastore.preferences.PreferencesProto$PreferenceMap",
+  "fields":[{"name":"preferences_"}]
+},
+{
+  "name":"androidx.datastore.preferences.PreferencesProto$Value",
+  "fields":[{"name":"valueCase_"}, {"name":"value_"}]
+},
+{
+  "name":"androidx.datastore.preferences.protobuf.DescriptorMessageInfoFactory"
+},
+{
+  "name":"androidx.datastore.preferences.protobuf.ExtensionSchemaFull"
+},
+{
+  "name":"androidx.datastore.preferences.protobuf.GeneratedMessage"
+},
+{
+  "name":"androidx.datastore.preferences.protobuf.ListFieldSchemaFull"
+},
+{
+  "name":"androidx.datastore.preferences.protobuf.MapFieldSchemaFull"
+},
+{
+  "name":"androidx.datastore.preferences.protobuf.NewInstanceSchemaFull"
+},
+{
+  "name":"androidx.datastore.preferences.protobuf.UnknownFieldSetSchema"
+},
+{
+  "name":"androidx.emoji2.text.EmojiCompatInitializer"
+},
+{
+  "name":"androidx.fragment.app.Fragment"
+},
+{
+  "name":"androidx.fragment.app.FragmentActivity"
+},
+{
+  "name":"androidx.lifecycle.LifecycleObserver",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"androidx.lifecycle.ProcessLifecycleInitializer"
+},
+{
+  "name":"androidx.lifecycle.ViewModelStore",
+  "fields":[{"name":"map"}]
+},
+{
+  "name":"androidx.profileinstaller.ProfileInstallerInitializer"
+},
+{
+  "name":"androidx.sharetarget.ShortcutInfoCompatSaverImpl"
+},
+{
+  "name":"androidx.startup.InitializationProvider",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"androidx.work.Data$Builder",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"androidx.work.OverwritingInputMerger",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"androidx.work.WorkManager"
+},
+{
+  "name":"androidx.work.impl.WorkDatabase_Impl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"androidx.work.impl.background.systemjob.SystemJobService",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"byte",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"com.adjust.sdk.SystemLifecycleContentProvider",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.google.android.material.theme.MaterialComponentsViewInflater",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.google.firebase.provider.FirebaseInitProvider",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.sun.crypto.provider.AESKeyGenerator",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.sun.crypto.provider.GaloisCounterMode$AESGCM",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.sun.jna.CallbackProxy",
+  "methods":[{"name":"callback","parameterTypes":["java.lang.Object[]"] }]
+},
+{
+  "name":"com.sun.jna.Pointer",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"com.sun.jna.Structure$FFIType",
+  "allDeclaredFields":true,
+  "queryAllPublicConstructors":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}],
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.sun.jna.Structure$FFIType$size_t",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.sun.jna.ptr.ByteByReference",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.sun.xml.internal.stream.XMLInputFactoryImpl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"com.whatsapp.util.Log"
+},
+{
+  "name":"double",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"float",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"int",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"io.sentry.android.core.SentryPerformanceProvider",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"io.sentry.util.AutoClosableReentrantLock",
+  "fields":[{"name":"lock"}]
+},
+{
+  "name":"java.lang.Class",
+  "methods":[{"name":"getDeclaredMethod","parameterTypes":["java.lang.String","java.lang.Class[]"] }]
+},
+{
+  "name":"java.lang.Object",
+  "allDeclaredFields":true,
+  "queryAllDeclaredMethods":true,
+  "methods":[{"name":"equals","parameterTypes":["java.lang.Object"] }, {"name":"hashCode","parameterTypes":[] }, {"name":"toString","parameterTypes":[] }]
+},
+{
+  "name":"java.lang.Throwable",
+  "methods":[{"name":"addSuppressed","parameterTypes":["java.lang.Throwable"] }]
+},
+{
+  "name":"java.lang.ref.Cleaner"
+},
+{
+  "name":"java.lang.reflect.Method",
+  "methods":[{"name":"isVarArgs","parameterTypes":[] }]
+},
+{
+  "name":"java.nio.Buffer",
+  "fields":[{"name":"address"}, {"name":"effectiveDirectAddress"}]
+},
+{
+  "name":"java.nio.file.Files"
+},
+{
+  "name":"java.security.KeyStoreSpi"
+},
+{
+  "name":"java.security.SecureRandomParameters"
+},
+{
+  "name":"java.security.cert.X509Certificate"
+},
+{
+  "name":"java.sql.Date"
+},
+{
+  "name":"java.sql.Timestamp"
+},
+{
+  "name":"java.util.concurrent.ForkJoinTask",
+  "fields":[{"name":"aux"}, {"name":"status"}]
+},
+{
+  "name":"java.util.concurrent.ScheduledThreadPoolExecutor",
+  "methods":[{"name":"setRemoveOnCancelPolicy","parameterTypes":["boolean"] }]
+},
+{
+  "name":"java.util.concurrent.atomic.AtomicBoolean",
+  "fields":[{"name":"value"}]
+},
+{
+  "name":"java.util.concurrent.atomic.AtomicReference",
+  "fields":[{"name":"value"}]
+},
+{
+  "name":"javax.security.auth.x500.X500Principal",
+  "fields":[{"name":"thisX500Name"}],
+  "methods":[{"name":"<init>","parameterTypes":["sun.security.x509.X500Name"] }]
+},
+{
+  "name":"jdk.internal.misc.Unsafe"
+},
+{
+  "name":"kotlin.SafePublicationLazyImpl",
+  "fields":[{"name":"_value"}]
+},
+{
+  "name":"kotlin.reflect.jvm.internal.ReflectionFactoryImpl"
+},
+{
+  "name":"kotlinx.coroutines.CancellableContinuationImpl",
+  "fields":[{"name":"_decisionAndIndex$volatile"}, {"name":"_parentHandle$volatile"}, {"name":"_state$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.CancelledContinuation",
+  "fields":[{"name":"_resumed$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.CompletedExceptionally",
+  "fields":[{"name":"_handled$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.DispatchedCoroutine",
+  "fields":[{"name":"_decision$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.EventLoopImplBase",
+  "fields":[{"name":"_delayed$volatile"}, {"name":"_isCompleted$volatile"}, {"name":"_queue$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.JobSupport",
+  "fields":[{"name":"_parentHandle$volatile"}, {"name":"_state$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.JobSupport$Finishing",
+  "fields":[{"name":"_exceptionsHolder$volatile"}, {"name":"_isCompleting$volatile"}, {"name":"_rootCause$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.android.AndroidDispatcherFactory",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"kotlinx.coroutines.channels.BufferedChannel",
+  "fields":[{"name":"_closeCause$volatile"}, {"name":"bufferEnd$volatile"}, {"name":"bufferEndSegment$volatile"}, {"name":"closeHandler$volatile"}, {"name":"completedExpandBuffersAndPauseFlag$volatile"}, {"name":"receiveSegment$volatile"}, {"name":"receivers$volatile"}, {"name":"sendSegment$volatile"}, {"name":"sendersAndCloseStatus$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.flow.StateFlowImpl",
+  "fields":[{"name":"_state$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.ConcurrentLinkedListNode",
+  "fields":[{"name":"_next$volatile"}, {"name":"_prev$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.DispatchedContinuation",
+  "fields":[{"name":"_reusableCancellableContinuation$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.LimitedDispatcher",
+  "fields":[{"name":"runningWorkers$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.LockFreeLinkedListNode",
+  "fields":[{"name":"_next$volatile"}, {"name":"_prev$volatile"}, {"name":"_removedRef$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.LockFreeTaskQueue",
+  "fields":[{"name":"_cur$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.LockFreeTaskQueueCore",
+  "fields":[{"name":"_next$volatile"}, {"name":"_state$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.Segment",
+  "fields":[{"name":"cleanedAndPointers$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.internal.ThreadSafeHeap",
+  "fields":[{"name":"_size$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.scheduling.CoroutineScheduler",
+  "fields":[{"name":"_isTerminated$volatile"}, {"name":"controlState$volatile"}, {"name":"parkedWorkersStack$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.scheduling.CoroutineScheduler$Worker",
+  "fields":[{"name":"workerCtl$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.scheduling.WorkQueue",
+  "fields":[{"name":"blockingTasksInBuffer$volatile"}, {"name":"consumerIndex$volatile"}, {"name":"lastScheduledTask$volatile"}, {"name":"producerIndex$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.selects.SelectImplementation",
+  "fields":[{"name":"state$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.sync.MutexImpl",
+  "fields":[{"name":"owner$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.sync.SemaphoreAndMutexImpl",
+  "fields":[{"name":"_availablePermits$volatile"}, {"name":"deqIdx$volatile"}, {"name":"enqIdx$volatile"}, {"name":"head$volatile"}, {"name":"tail$volatile"}]
+},
+{
+  "name":"kotlinx.coroutines.test.internal.TestMainDispatcherFactory"
+},
+{
+  "name":"leakcanary.LeakCanary$Config",
+  "allDeclaredFields":true
+},
+{
+  "name":"leakcanary.internal.AndroidXFragmentDestroyWatcher",
+  "methods":[{"name":"<init>","parameterTypes":["leakcanary.ReachabilityWatcher"] }]
+},
+{
+  "name":"leakcanary.internal.InternalLeakCanary",
+  "fields":[{"name":"INSTANCE"}]
+},
+{
+  "name":"leakcanary.internal.LeakCanaryFileProvider",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"leakcanary.internal.MainProcessAppWatcherInstaller",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"leakcanary.internal.PlumberInstaller",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"leakcanary.internal.RemoteLeakCanaryWorkerService"
+},
+{
+  "name":"libcore.io.Memory",
+  "methods":[{"name":"peekByte","parameterTypes":["long"] }, {"name":"peekByteArray","parameterTypes":["long","byte[]","int","int"] }, {"name":"peekInt","parameterTypes":["long","boolean"] }, {"name":"peekLong","parameterTypes":["int","boolean"] }, {"name":"peekLong","parameterTypes":["long","boolean"] }, {"name":"pokeByte","parameterTypes":["long","byte"] }, {"name":"pokeByteArray","parameterTypes":["long","byte[]","int","int"] }, {"name":"pokeInt","parameterTypes":["long","int","boolean"] }, {"name":"pokeLong","parameterTypes":["long","long","boolean"] }]
+},
+{
+  "name":"long",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.adsclient.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.adsclient.UniffiCallbackFunction",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "methods":[{"name":"callback","parameterTypes":["com.sun.jna.Pointer"] }]
+},
+{
+  "name":"mozilla.appservices.adsclient.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.adsclient.uniffiCallbackInterfaceMozAdsContextIdProvider$contextId",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.adsclient.uniffiCallbackInterfaceMozAdsContextIdProvider$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.adsclient.uniffiCallbackInterfaceMozAdsContextIdProvider$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.adsclient.uniffiCallbackInterfaceMozAdsTelemetry$recordBuildCacheError",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.adsclient.uniffiCallbackInterfaceMozAdsTelemetry$recordClientError",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.adsclient.uniffiCallbackInterfaceMozAdsTelemetry$recordClientOperationTotal",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.adsclient.uniffiCallbackInterfaceMozAdsTelemetry$recordDeserializationError",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.adsclient.uniffiCallbackInterfaceMozAdsTelemetry$recordHttpCacheOutcome",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.adsclient.uniffiCallbackInterfaceMozAdsTelemetry$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.adsclient.uniffiCallbackInterfaceMozAdsTelemetry$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.autofill.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.autofill.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.fxaclient.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.fxaclient.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.init_rust_components.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.init_rust_components.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.logins.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.logins.UniffiCallbackFunction",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true
+},
+{
+  "name":"mozilla.appservices.logins.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.logins.uniffiCallbackInterfaceEncryptorDecryptor$decrypt",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.logins.uniffiCallbackInterfaceEncryptorDecryptor$encrypt",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.logins.uniffiCallbackInterfaceEncryptorDecryptor$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.logins.uniffiCallbackInterfaceEncryptorDecryptor$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.logins.uniffiCallbackInterfaceKeyManager$getKey",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.logins.uniffiCallbackInterfaceKeyManager$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.logins.uniffiCallbackInterfaceKeyManager$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.merino.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.merino.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.places.uniffi.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.places.uniffi.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.remotesettings.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.remotesettings.UniffiCallbackFunction",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "methods":[{"name":"callback","parameterTypes":["com.sun.jna.Pointer"] }]
+},
+{
+  "name":"mozilla.appservices.remotesettings.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.remotesettings.uniffiCallbackInterfaceRemoteSettingsTelemetry$reportUptake",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.remotesettings.uniffiCallbackInterfaceRemoteSettingsTelemetry$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.remotesettings.uniffiCallbackInterfaceRemoteSettingsTelemetry$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.rust_log_forwarder.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.rust_log_forwarder.UniffiCallbackFunction",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "methods":[{"name":"callback","parameterTypes":["com.sun.jna.Pointer"] }]
+},
+{
+  "name":"mozilla.appservices.rust_log_forwarder.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.rust_log_forwarder.uniffiCallbackInterfaceAppServicesLogger$log",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.rust_log_forwarder.uniffiCallbackInterfaceAppServicesLogger$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.rust_log_forwarder.uniffiCallbackInterfaceAppServicesLogger$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.search.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.search.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.suggest.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.suggest.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.sync15.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.sync15.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.tracing.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.tracing.UniffiCallbackFunction",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "methods":[{"name":"callback","parameterTypes":["com.sun.jna.Pointer"] }]
+},
+{
+  "name":"mozilla.appservices.tracing.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.tracing.uniffiCallbackInterfaceEventSink$onEvent",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.tracing.uniffiCallbackInterfaceEventSink$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.tracing.uniffiCallbackInterfaceEventSink$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.viaduct.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.viaduct.UniffiCallbackFunction",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}],
+  "methods":[{"name":"callback","parameterTypes":["com.sun.jna.Pointer"] }]
+},
+{
+  "name":"mozilla.appservices.viaduct.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.appservices.viaduct.uniffiCallbackInterfaceBackend$sendRequest",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.viaduct.uniffiCallbackInterfaceBackend$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.viaduct.uniffiCallbackInterfaceBackend$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.appservices.viaduct.uniffiForeignFutureDroppedCallbackImpl",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.components.browser.state.state.content.PermissionHighlightsState"
+},
+{
+  "name":"mozilla.components.browser.storage.sync.PlacesHistoryStorageWorker",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","androidx.work.WorkerParameters"] }]
+},
+{
+  "name":"mozilla.components.concept.engine.permission.SitePermissions"
+},
+{
+  "name":"mozilla.components.concept.engine.prompt.ShareData"
+},
+{
+  "name":"mozilla.components.concept.engine.translate.ModelState"
+},
+{
+  "name":"mozilla.components.concept.engine.webextension.InstallationMethod"
+},
+{
+  "name":"mozilla.components.concept.storage.Address"
+},
+{
+  "name":"mozilla.components.concept.storage.CreditCard"
+},
+{
+  "name":"mozilla.components.feature.addons.Addon"
+},
+{
+  "name":"mozilla.components.feature.downloads.db.DownloadsDatabase_Impl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"mozilla.components.feature.prompts.provider.FileProvider",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"mozilla.components.feature.pwa.db.ManifestDatabase_Impl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"mozilla.components.feature.recentlyclosed.db.RecentlyClosedTabsDatabase_Impl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"mozilla.components.feature.tab.collections.db.TabCollectionDatabase_Impl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"mozilla.components.feature.top.sites.db.TopSiteDatabase_Impl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"mozilla.components.lib.crash.db.CrashDatabase_Impl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"mozilla.components.service.mars.MacTopSitesUpdaterWorker",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","androidx.work.WorkerParameters"] }]
+},
+{
+  "name":"mozilla.components.service.pocket.recommendations.db.ContentRecommendationsDatabase_Impl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"mozilla.components.service.sync.autofill.AutofillStorageWorker",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","androidx.work.WorkerParameters"] }]
+},
+{
+  "name":"mozilla.components.service.sync.logins.SyncableLoginsStorageWorker",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","androidx.work.WorkerParameters"] }]
+},
+{
+  "name":"mozilla.components.support.remotesettings.RemoteSettingsSyncWorker",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","androidx.work.WorkerParameters"] }]
+},
+{
+  "name":"mozilla.components.support.utils.provider.FileProvider",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.ForeignBytes",
+  "allDeclaredFields":true
+},
+{
+  "name":"mozilla.telemetry.glean.internal.ForeignBytes$ByValue",
+  "allDeclaredFields":true,
+  "queryAllPublicConstructors":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}],
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.RustBuffer",
+  "allDeclaredFields":true
+},
+{
+  "name":"mozilla.telemetry.glean.internal.RustBuffer$ByValue",
+  "allDeclaredFields":true,
+  "queryAllPublicConstructors":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}],
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiCallbackInterfaceClone",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiCallbackInterfaceFree",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiCallbackInterfaceGleanEventListenerMethod0",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiCallbackInterfaceOnGleanEventsMethod0",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}],
+  "methods":[{"name":"callback","parameterTypes":["long","com.sun.jna.Pointer","mozilla.telemetry.glean.internal.UniffiRustCallStatus"] }]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiCallbackInterfaceOnGleanEventsMethod1",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}],
+  "methods":[{"name":"callback","parameterTypes":["long","com.sun.jna.Pointer","mozilla.telemetry.glean.internal.UniffiRustCallStatus"] }]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiCallbackInterfaceOnGleanEventsMethod2",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}],
+  "methods":[{"name":"callback","parameterTypes":["long","com.sun.jna.ptr.ByteByReference","mozilla.telemetry.glean.internal.UniffiRustCallStatus"] }]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiCallbackInterfaceOnGleanEventsMethod3",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiCallbackInterfaceOnGleanEventsMethod4",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiRustCallStatus",
+  "allDeclaredFields":true,
+  "queryAllPublicConstructors":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}],
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiVTableCallbackInterfaceGleanEventListener",
+  "allDeclaredFields":true
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiVTableCallbackInterfaceGleanEventListener$UniffiByValue",
+  "allDeclaredFields":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiVTableCallbackInterfaceOnGleanEvents",
+  "allDeclaredFields":true
+},
+{
+  "name":"mozilla.telemetry.glean.internal.UniffiVTableCallbackInterfaceOnGleanEvents$UniffiByValue",
+  "allDeclaredFields":true,
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.uniffiCallbackInterfaceGleanEventListener$onEventRecorded",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.uniffiCallbackInterfaceGleanEventListener$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.uniffiCallbackInterfaceGleanEventListener$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.uniffiCallbackInterfaceOnGleanEvents$cancelUploads",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.uniffiCallbackInterfaceOnGleanEvents$initializeFinished",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.uniffiCallbackInterfaceOnGleanEvents$shutdown",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.uniffiCallbackInterfaceOnGleanEvents$startMetricsPingScheduler",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.uniffiCallbackInterfaceOnGleanEvents$triggerUpload",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.uniffiCallbackInterfaceOnGleanEvents$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.internal.uniffiCallbackInterfaceOnGleanEvents$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"mozilla.telemetry.glean.scheduler.PingUploadWorker",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","androidx.work.WorkerParameters"] }]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.IntegrityCheckingUniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.UniffiCallbackFunction",
+  "queryAllDeclaredMethods":true,
+  "queryAllPublicMethods":true,
+  "methods":[{"name":"callback","parameterTypes":["com.sun.jna.Pointer"] }]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.UniffiLib",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceGeckoPrefHandler$getPrefsWithState",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceGeckoPrefHandler$setGeckoPrefsOriginalValues",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceGeckoPrefHandler$setGeckoPrefsState",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceGeckoPrefHandler$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceGeckoPrefHandler$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceMetricsHandler$recordDatabaseLoad",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceMetricsHandler$recordDatabaseMigration",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceMetricsHandler$recordEnrollmentStatuses",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceMetricsHandler$recordFeatureActivation",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceMetricsHandler$recordFeatureExposure",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceMetricsHandler$recordMalformedFeatureConfig",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceMetricsHandler$submitTargetingContext",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceMetricsHandler$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceMetricsHandler$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceRecordedContext$getEventQueries",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceRecordedContext$record",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceRecordedContext$setEventQueryValues",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceRecordedContext$toJson",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceRecordedContext$uniffiClone",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.experiments.nimbus.internal.uniffiCallbackInterfaceRecordedContext$uniffiFree",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"org.mozilla.fenix.FenixApplication",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"org.mozilla.fenix.HomeActivity",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"org.mozilla.fenix.StartupFragment",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"org.mozilla.fenix.collections.SaveCollectionStep"
+},
+{
+  "name":"org.mozilla.fenix.components.LensFileProvider",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"org.mozilla.fenix.components.accounts.FenixFxAEntryPoint"
+},
+{
+  "name":"org.mozilla.fenix.components.menu.MenuAccessPoint"
+},
+{
+  "name":"org.mozilla.fenix.components.metrics.MetricsUtils$Source"
+},
+{
+  "name":"org.mozilla.fenix.home.HomeFragment",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"org.mozilla.fenix.home.HomeFragmentArgs",
+  "methods":[{"name":"fromBundle","parameterTypes":["android.os.Bundle"] }]
+},
+{
+  "name":"org.mozilla.fenix.home.HomeScreenViewModel",
+  "queryAllPublicConstructors":true,
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"org.mozilla.fenix.ipprotection.store.Surface"
+},
+{
+  "name":"org.mozilla.fenix.library.history.History"
+},
+{
+  "name":"org.mozilla.fenix.messaging.MessageNotificationWorker",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","androidx.work.WorkerParameters"] }]
+},
+{
+  "name":"org.mozilla.fenix.navigation.compat.NavHostFragmentCompat",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"org.mozilla.fenix.pbmlock.NavigationOrigin"
+},
+{
+  "name":"org.mozilla.fenix.perf.HomeActivityRootLinearLayout",
+  "methods":[{"name":"<init>","parameterTypes":["android.content.Context","android.util.AttributeSet"] }]
+},
+{
+  "name":"org.mozilla.fenix.perf.ProfilerProvider",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"org.mozilla.fenix.settings.PhoneFeature"
+},
+{
+  "name":"org.mozilla.fenix.tabgroups.storage.database.TabGroupDatabase_Impl",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"org.mozilla.fenix.tabstray.redux.state.Page"
+},
+{
+  "name":"org.mozilla.fenix.tabstray.ui.AccessPoint"
+},
+{
+  "name":"org.mozilla.fenix.termsofuse.store.Surface"
+},
+{
+  "name":"org.mozilla.fenix.trackingprotection.TrackingProtectionMode"
+},
+{
+  "name":"org.mozilla.fenix.translations.TranslationsDialogAccessPoint"
+},
+{
+  "name":"org.mozilla.fenix.translations.preferences.downloadlanguages.DownloadLanguageItemTypePreference"
+},
+{
+  "name":"org.mozilla.gecko.EventDispatcher",
+  "methods":[{"name":"dispatchToGecko","parameterTypes":["java.lang.String","org.mozilla.gecko.util.GeckoBundle","org.mozilla.gecko.util.EventCallback"] }]
+},
+{
+  "name":"org.mozilla.gecko.GeckoSystemStateListener",
+  "methods":[{"name":"nativeOnDeviceChanged","parameterTypes":[] }]
+},
+{
+  "name":"org.mozilla.gecko.process.GeckoChildProcessServices$tab31",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"org.mozilla.gecko.process.GeckoProcessManager$ConnectionManager",
+  "methods":[{"name":"attachTo","parameterTypes":["org.mozilla.gecko.process.GeckoProcessManager$ConnectionManager"] }]
+},
+{
+  "name":"org.mozilla.gecko.util.DebugConfig",
+  "allDeclaredFields":true
+},
+{
+  "name":"org.mozilla.geckoview.GeckoRuntime$LifecycleListener",
+  "queryAllDeclaredMethods":true
+},
+{
+  "name":"org.mozilla.geckoview.GeckoRuntime_LifecycleListener_LifecycleAdapter"
+},
+{
+  "name":"org.robolectric.Robolectric"
+},
+{
+  "name":"short",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+},
+{
+  "name":"sun.misc.Unsafe",
+  "allDeclaredFields":true,
+  "methods":[{"name":"arrayBaseOffset","parameterTypes":["java.lang.Class"] }, {"name":"arrayIndexScale","parameterTypes":["java.lang.Class"] }, {"name":"getInt","parameterTypes":["java.lang.Object","long"] }, {"name":"getLong","parameterTypes":["java.lang.Object","long"] }, {"name":"getObject","parameterTypes":["java.lang.Object","long"] }, {"name":"objectFieldOffset","parameterTypes":["java.lang.reflect.Field"] }, {"name":"putInt","parameterTypes":["java.lang.Object","long","int"] }, {"name":"putLong","parameterTypes":["java.lang.Object","long","long"] }, {"name":"putObject","parameterTypes":["java.lang.Object","long","java.lang.Object"] }]
+},
+{
+  "name":"sun.security.provider.NativePRNG",
+  "methods":[{"name":"<init>","parameterTypes":[] }, {"name":"<init>","parameterTypes":["java.security.SecureRandomParameters"] }]
+},
+{
+  "name":"sun.security.provider.SHA",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"sun.security.provider.X509Factory",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"sun.security.rsa.RSAKeyFactory$Legacy",
+  "methods":[{"name":"<init>","parameterTypes":[] }]
+},
+{
+  "name":"sun.security.x509.AuthorityInfoAccessExtension",
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.Boolean","java.lang.Object"] }]
+},
+{
+  "name":"sun.security.x509.AuthorityKeyIdentifierExtension",
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.Boolean","java.lang.Object"] }]
+},
+{
+  "name":"sun.security.x509.BasicConstraintsExtension",
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.Boolean","java.lang.Object"] }]
+},
+{
+  "name":"sun.security.x509.CRLDistributionPointsExtension",
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.Boolean","java.lang.Object"] }]
+},
+{
+  "name":"sun.security.x509.CertificatePoliciesExtension",
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.Boolean","java.lang.Object"] }]
+},
+{
+  "name":"sun.security.x509.ExtendedKeyUsageExtension",
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.Boolean","java.lang.Object"] }]
+},
+{
+  "name":"sun.security.x509.KeyUsageExtension",
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.Boolean","java.lang.Object"] }]
+},
+{
+  "name":"sun.security.x509.SubjectAlternativeNameExtension",
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.Boolean","java.lang.Object"] }]
+},
+{
+  "name":"sun.security.x509.SubjectKeyIdentifierExtension",
+  "methods":[{"name":"<init>","parameterTypes":["java.lang.Boolean","java.lang.Object"] }]
+},
+{
+  "name":"void",
+  "fields":[{"name":"OPTIONS"}, {"name":"STRING_ENCODING"}, {"name":"STRUCTURE_ALIGNMENT"}, {"name":"TYPE_MAPPER"}]
+}
+]
