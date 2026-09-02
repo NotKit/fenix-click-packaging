@@ -41,7 +41,9 @@ be read -- 46 of them, from `java/lang/IllegalStateException` (which Gecko
 throws from `runUiThreadCallback`, and whose absence killed the run a tenth of
 a second after the first paint) to `android/media/MediaCodec`. Names not on the
 class path are dropped, so a framework class atlas does not have is not
-registered.
+registered, and a JDK name is registered for `FindClass` alone -- giving
+`java.lang.Class` all its methods makes `getClassLoader` reachable, and the
+class loader drags a `JarFile` into the image heap.
 
 Generated at build time rather than committed: a payload bump adds and removes
 classes, and a stale list is a list that is wrong exactly where it matters.
@@ -195,18 +197,23 @@ def main():
     # java.* is not on the class path but is always there.
     native = {c for c in xul_classes(xul)
               if c in parents or c.startswith(("java/", "javax/"))}
-    jni |= native
+    # The JDK names are wanted for FindClass alone. Giving java.lang.Class all
+    # its methods makes getClassLoader reachable, and the class loader drags a
+    # JarFile into the image heap, which the builder refuses.
+    jdk = {c for c in native if c.startswith(("java/", "javax/"))}
+    jni |= native - jdk
     gecko = [{"name": c.replace("/", "."), "allDeclaredMethods": True,
               "allDeclaredFields": True, "allDeclaredConstructors": True}
              for c in sorted(jni)]
+    gecko += [{"name": c.replace("/", ".")} for c in sorted(jdk)]
     entries += gecko
     for path, data in ((out, entries), (out_jni, gecko)):
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
             f.write("\n")
     print(f"reflection: {len(picked)} name-instantiated classes, "
-          f"{len(spans)} span array types and {len(jni)} JNI classes "
-          f"({len(native)} of them named by libxul), out of {len(parents)} classes")
+          f"{len(spans)} span array types, {len(jni)} JNI classes and "
+          f"{len(jdk)} JDK names for FindClass, out of {len(parents)} classes")
 
 
 if __name__ == "__main__":
