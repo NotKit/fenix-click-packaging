@@ -5,6 +5,10 @@
       {
         "name": "onBackPressed",
         "parameterTypes": []
+      },
+      {
+        "name": "detachWindowViews",
+        "parameterTypes": []
       }
     ]
   },
@@ -36,6 +40,54 @@
           "java.lang.String",
           "int"
         ]
+      }
+    ]
+  },
+  {
+    "name": "android.view.Display",
+    "methods": [
+      {
+        "name": "setWindowSize",
+        "parameterTypes": [
+          "int",
+          "int"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "android.view.ViewRootImpl",
+    "methods": [
+      {
+        "name": "dispatchConfigurationChanged",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "android.app.Activity",
+    "methods": [
+      {
+        "name": "detachWindowViews",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "android.net.Network",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "android.graphics.SurfaceTexture",
+    "methods": [
+      {
+        "name": "postFrameAvailableFromNative",
+        "parameterTypes": []
       }
     ]
   }

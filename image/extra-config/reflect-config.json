@@ -1,0 +1,10 @@
+[
+  {
+    "name": "java.io.FileDescriptor",
+    "fields": [
+      {
+        "name": "fd"
+      }
+    ]
+  }
+]
