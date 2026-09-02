@@ -25,6 +25,7 @@
 #   OUTDIR         where libfenix.so lands
 #   IMG_XMX        builder heap, default 10g
 #   IMG_PARALLELISM  builder threads, default nproc
+#   IMG_XUL        the payload's libxul.so, default $APPCP/../gecko/libxul.so
 #   IMG_EXTRA      extra native-image arguments
 set -euo pipefail
 
@@ -198,7 +199,9 @@ echo "image class path: framework + shim + ${#JARS[@]} jars"
 # moves the set and a stale list is wrong exactly where it matters.
 GENCFG="$OUTDIR/generated-reflect-config.json"
 GENJNI="$OUTDIR/generated-jni-config.json"
-python3 "$HERE/gen-reflect-config.py" "$GENCFG" "$GENJNI" "$HAX" "$SHIMJAR" "${JARS[@]}"
+XUL="${IMG_XUL:-$APPCP/../gecko/libxul.so}"
+[ -f "$XUL" ] || { echo "no libxul.so at $XUL; set IMG_XUL" >&2; exit 1; }
+python3 "$HERE/gen-reflect-config.py" "$GENCFG" "$GENJNI" "$XUL" "$HAX" "$SHIMJAR" "${JARS[@]}"
 
 # SDK_INT is a static final int: initialised at build time it is constant-folded
 # into every "SDK_INT >= N" branch in the app and no run-time -D can undo it.

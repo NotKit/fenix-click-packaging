@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Register the classes Android instantiates by *name* for reflection.
 
-    gen-reflect-config.py <out-reflect.json> <out-jni.json> <jar> [<jar> ...]
+    gen-reflect-config.py <out-reflect.json> <out-jni.json> <libxul.so|-> <jar>...
 
 Whole families of class are invisible to both the tracing agent and the
 closed-world analysis, because nothing in the bytecode names them: every
@@ -35,10 +35,19 @@ with `GetMethodID`, which is JNI rather than reflection and fails separately --
 carrying one of Gecko's four JNI/reflection marker annotations gets its whole
 surface kept in both; there are about a hundred of them.
 
+A fourth, JNI only: **the class names libxul carries**. `FindClass` takes an
+internal name out of the binary's string table, so the names are all there to
+be read -- 46 of them, from `java/lang/IllegalStateException` (which Gecko
+throws from `runUiThreadCallback`, and whose absence killed the run a tenth of
+a second after the first paint) to `android/media/MediaCodec`. Names not on the
+class path are dropped, so a framework class atlas does not have is not
+registered.
+
 Generated at build time rather than committed: a payload bump adds and removes
 classes, and a stale list is a list that is wrong exactly where it matters.
 """
 import json
+import re
 import struct
 import sys
 import zipfile
@@ -77,6 +86,10 @@ JNI_MARKERS = ("Lorg/mozilla/gecko/annotation/WrapForJNI;",
                "Lorg/mozilla/gecko/annotation/JNITarget;",
                "Lorg/mozilla/gecko/annotation/ReflectionTarget;",
                "Lorg/mozilla/gecko/annotation/WebRTCJNITarget;")
+
+# An internal class name in a binary's string table: FindClass's argument.
+XUL_NAME = re.compile(rb"(?:java|javax|android|androidx|org/mozilla)"
+                      rb"(?:/[A-Za-z_$][A-Za-z0-9_$]*)+")
 
 # constant-pool tags whose entries are a fixed number of bytes after the tag
 FIXED = {3: 4, 4: 4, 5: 8, 6: 8, 7: 2, 8: 2, 9: 4, 10: 4, 11: 4, 12: 4,
@@ -129,8 +142,16 @@ def read_class(data):
     return this_name, parents, marked
 
 
+def xul_classes(path):
+    """The internal class names FindClass could be called with, from libxul."""
+    if path == "-":
+        return set()
+    with open(path, "rb") as f:
+        return {m.group().decode() for m in XUL_NAME.finditer(f.read())}
+
+
 def main():
-    out, out_jni, jars = sys.argv[1], sys.argv[2], sys.argv[3:]
+    out, out_jni, xul, jars = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4:]
     parents = {}
     jni = set()
     for jar in jars:
@@ -170,6 +191,11 @@ def main():
     entries += [{"name": c.replace("/", ".") + "[]", "unsafeAllocated": True}
                 for c in spans]
 
+    # A name the class path does not have would be registered as unresolvable;
+    # java.* is not on the class path but is always there.
+    native = {c for c in xul_classes(xul)
+              if c in parents or c.startswith(("java/", "javax/"))}
+    jni |= native
     gecko = [{"name": c.replace("/", "."), "allDeclaredMethods": True,
               "allDeclaredFields": True, "allDeclaredConstructors": True}
              for c in sorted(jni)]
@@ -179,8 +205,8 @@ def main():
             json.dump(data, f, indent=2)
             f.write("\n")
     print(f"reflection: {len(picked)} name-instantiated classes, "
-          f"{len(spans)} span array types and {len(jni)} Gecko JNI classes, "
-          f"out of {len(parents)} classes")
+          f"{len(spans)} span array types and {len(jni)} JNI classes "
+          f"({len(native)} of them named by libxul), out of {len(parents)} classes")
 
 
 if __name__ == "__main__":
