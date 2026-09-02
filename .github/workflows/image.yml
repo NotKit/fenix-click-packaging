@@ -34,9 +34,11 @@ on:
         default: true
   push:
     branches: [master]
+    # Only the build's own inputs. An edit to this file must not rebuild the
+    # image: build.sh pins the published asset by sha256 and a rebuild is not
+    # bit-identical, so a republish would break the click that pins it.
     paths:
       - "image/**"
-      - ".github/workflows/image.yml"
 
 jobs:
   image:
@@ -219,11 +221,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Named after the SDK only. A payload bump with an unchanged SDK
-          # therefore clobbers this asset -- which build.sh turns into a loud
-          # checksum failure rather than a quietly different browser.
+          # Named after the SDK only, so a payload bump with an unchanged SDK
+          # would land on the same tag. An existing asset is therefore left
+          # alone unless a dispatch asks for it: a click pins this file by
+          # sha256, and replacing it under one is how that pin stops meaning
+          # anything. The artifact above is always there to take by hand.
           tag="image-${{ steps.pins.outputs.FENIX_SDK_TAG }}"
-          if gh release view "$tag" >/dev/null 2>&1; then
+          if gh release view "$tag" --json assets \
+               -q '.assets[].name' 2>/dev/null | grep -qx fenix-image-arm64.tar.zst; then
+            if [ "${{ github.event_name }}" != workflow_dispatch ]; then
+              echo "$tag already has an image; leaving it alone" >>"$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            gh release upload "$tag" fenix-image-arm64.tar.zst fenix-image-arm64.tar.zst.sha256 --clobber
+          elif gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" fenix-image-arm64.tar.zst fenix-image-arm64.tar.zst.sha256 --clobber
           else
             gh release create "$tag" fenix-image-arm64.tar.zst fenix-image-arm64.tar.zst.sha256 \
