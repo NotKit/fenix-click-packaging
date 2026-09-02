@@ -157,8 +157,37 @@ if [ "${#missing[@]}" -gt 0 ]; then
 else
 	echo "gapclasses: none needed, the framework has them all"
 fi
-CP="$HAX:$SHIMJAR:$(IFS=:; echo "${JARS[*]}")${GAP:+:$GAP}"
+# The builder Feature that installs atlas's JCE provider into the *builder's*
+# provider list. It has to be on the image class path for --features to find it,
+# and it compiles against the builder's own org.graalvm.nativeimage API.
+FEATDIR="$OUTDIR/feature"
+rm -rf "$FEATDIR"; mkdir -p "$FEATDIR"
+"$GRAALVM_HOME/bin/javac" -nowarn -d "$FEATDIR" \
+	-cp "$GRAALVM_HOME/lib/svm/builder/svm.jar:$HAX" \
+	"$HERE/feature/fenixni/KeyStoreProviderFeature.java"
+
+CP="$HAX:$SHIMJAR:$(IFS=:; echo "${JARS[*]}")${GAP:+:$GAP}:$FEATDIR"
 echo "image class path: framework + shim + ${#JARS[@]} jars"
+
+# Fenix instantiates every fragment by name -- FragmentFactory.loadFragmentClass
+# does Class.forName() then getConstructor() -- and a name computed from the
+# navigation graph is invisible to both the trace and the analysis. Generated
+# from the class path rather than committed, so a payload bump cannot leave a
+# stale list behind: an unregistered fragment is a ClassNotFoundException at the
+# moment the user opens that screen, which is the worst place to find it.
+GENCFG="$OUTDIR/generated-reflect-config.json"
+{
+	echo "["
+	# one of these jars makes unzip -Z1 exit non-zero, and under set -e in a
+	# pipeline stage that ends the script three jars in
+	for j in "${JARS[@]}"; do unzip -Z1 "$j" 2>/dev/null || true; done |
+		grep -E '^(org/mozilla|mozilla/components)/.*Fragment\.class$' |
+		sed 's|/|.|g; s|\.class$||' | sort -u |
+		sed 's|.*|  { "name": "&", "methods": [{ "name": "<init>", "parameterTypes": [] }] },|' |
+		sed '$ s/,$//'
+	echo "]"
+} >"$GENCFG"
+echo "fragments registered for reflection: $(grep -c '"name"' "$GENCFG")"
 
 # SDK_INT is a static final int: initialised at build time it is constant-folded
 # into every "SDK_INT >= N" branch in the app and no run-time -D can undo it.
@@ -205,6 +234,8 @@ run_ni "$OUTDIR/build.log" \
 	--shared -o "$OUTDIR/libfenix" \
 	-cp "$CP" \
 	-H:ConfigurationFileDirectories="$IMG_CONFIG,$HERE/extra-config" \
+	-H:ReflectionConfigurationFiles="$GENCFG" \
+	--features=fenixni.KeyStoreProviderFeature \
 	--no-fallback \
 	--add-opens=java.base/java.io=ALL-UNNAMED \
 	-H:+UnlockExperimentalVMOptions \
