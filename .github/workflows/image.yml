@@ -84,6 +84,10 @@ jobs:
                    FENIX_PAYLOAD_TAG FENIX_PAYLOAD_SHA256; do
             echo "$v=${!v}" >>"$GITHUB_OUTPUT"
           done
+          # git's own tree object for image/: it changes when the metadata does
+          # and not otherwise, which is what makes the release tag below unique
+          # per build without ever clobbering one a click pins.
+          echo "IMAGE_REV=$(git rev-parse HEAD:image | cut -c1-7)" >>"$GITHUB_OUTPUT"
           echo "sdk $FENIX_SDK_TAG, payload $FENIX_PAYLOAD_TAG"
 
       - name: Cache the downloads
@@ -157,7 +161,9 @@ jobs:
           {
             echo "## native-image on $(uname -m)"
             echo
-            echo "sdk \`${{ steps.pins.outputs.FENIX_SDK_TAG }}\`, payload \`${{ steps.pins.outputs.FENIX_PAYLOAD_TAG }}\`"
+            echo "sdk \`${{ steps.pins.outputs.FENIX_SDK_TAG }}\`, payload \`${{ steps.pins.outputs.FENIX_PAYLOAD_TAG }}\`, image rev \`${{ steps.pins.outputs.IMAGE_REV }}\`"
+            echo
+            echo "pin with \`FENIX_IMAGE_TAG=image-${{ steps.pins.outputs.FENIX_SDK_TAG }}-${{ steps.pins.outputs.IMAGE_REV }}\`"
             echo
             for s in out/image/build-stats.env out/image/stub/build-stats.env; do
               [ -f "$s" ] || continue
@@ -221,12 +227,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Named after the SDK only, so a payload bump with an unchanged SDK
-          # would land on the same tag. An existing asset is therefore left
-          # alone unless a dispatch asks for it: a click pins this file by
-          # sha256, and replacing it under one is how that pin stops meaning
-          # anything. The artifact above is always there to take by hand.
-          tag="image-${{ steps.pins.outputs.FENIX_SDK_TAG }}"
+          # The tag carries the SDK and image/'s tree object, so a rebuild of
+          # unchanged inputs lands on the tag it already published and a changed
+          # one gets its own. An existing asset is left alone regardless unless a
+          # dispatch asks otherwise: a click pins this file by sha256, and
+          # replacing it under one is how that pin stops meaning anything.
+          tag="image-${{ steps.pins.outputs.FENIX_SDK_TAG }}-${{ steps.pins.outputs.IMAGE_REV }}"
           if gh release view "$tag" --json assets \
                -q '.assets[].name' 2>/dev/null | grep -qx fenix-image-arm64.tar.zst; then
             if [ "${{ github.event_name }}" != workflow_dispatch ]; then

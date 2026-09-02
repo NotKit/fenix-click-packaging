@@ -12,5 +12,31 @@
     "name": "android.view.ViewGroup",
     "allDeclaredMethods": true,
     "allPublicMethods": true
+  },
+  {
+    "name": "java.io.FileDescriptor",
+    "fields": [
+      {
+        "name": "fd"
+      }
+    ],
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": []
+      }
+    ]
+  },
+  {
+    "name": "android.system.ErrnoException",
+    "methods": [
+      {
+        "name": "<init>",
+        "parameterTypes": [
+          "java.lang.String",
+          "int"
+        ]
+      }
+    ]
   }
 ]
