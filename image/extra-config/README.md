@@ -53,14 +53,16 @@ Registering it for JNI is not enough; this path is reflection.
 
 Two things `build-image.sh` generates rather than keeps here:
 
-* **Every `*Fragment` class on the class path**, with its no-arg constructor,
-  into `generated-reflect-config.json`. `FragmentFactory.loadFragmentClass`
-  does `Class.forName(name)` then `getConstructor()` on a name that comes from
-  the navigation graph, so neither the trace nor the analysis can see it, and an
-  unregistered fragment is a `ClassNotFoundException` at the moment a user opens
-  that screen. Generated from the jars so a payload bump cannot leave a stale
-  list behind. The first one to surface was
-  `org.mozilla.fenix.browser.BrowserFragment` -- i.e. the browser itself.
+* **Every View and every Fragment on the class path**, with all their declared
+  constructors, into `generated-reflect-config.json` -- see
+  `../gen-reflect-config.py`. Android instantiates both families by *name*: the
+  layout inflater from a layout XML, `FragmentFactory.loadFragmentClass` from
+  the navigation graph. Nothing in the bytecode names them, so neither the trace
+  nor the analysis can see them, and a miss is a `ClassNotFoundException` at the
+  moment a user opens that screen. The first two to surface were
+  `org.mozilla.fenix.browser.BrowserFragment` and
+  `org.mozilla.fenix.browser.SwipeGestureLayout` -- i.e. the browser itself.
+  513 classes of 51,850.
 * **The AndroidKeyStore provider, installed into the builder's own provider
   list** by `feature/fenixni/KeyStoreProviderFeature.java`. See that file: this
   is what `-H:AdditionalSecurityProviders` does *not* do, and without it the

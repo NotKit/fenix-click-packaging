@@ -190,25 +190,14 @@ rm -rf "$FEATDIR"; mkdir -p "$FEATDIR"
 CP="$HAX:$SHIMJAR:$(IFS=:; echo "${JARS[*]}")${GAP:+:$GAP}:$FEATDIR"
 echo "image class path: framework + shim + ${#JARS[@]} jars"
 
-# Fenix instantiates every fragment by name -- FragmentFactory.loadFragmentClass
-# does Class.forName() then getConstructor() -- and a name computed from the
-# navigation graph is invisible to both the trace and the analysis. Generated
-# from the class path rather than committed, so a payload bump cannot leave a
-# stale list behind: an unregistered fragment is a ClassNotFoundException at the
-# moment the user opens that screen, which is the worst place to find it.
+# The classes Android instantiates by *name* -- every View the layout inflater
+# builds and every Fragment the navigation graph names -- are invisible to the
+# trace and to the analysis alike. gen-reflect-config.py reads the class
+# hierarchy out of the jars and registers every descendant of View and Fragment;
+# see its docstring. Generated rather than committed, because a payload bump
+# moves the set and a stale list is wrong exactly where it matters.
 GENCFG="$OUTDIR/generated-reflect-config.json"
-{
-	echo "["
-	# one of these jars makes unzip -Z1 exit non-zero, and under set -e in a
-	# pipeline stage that ends the script three jars in
-	for j in "${JARS[@]}"; do unzip -Z1 "$j" 2>/dev/null || true; done |
-		grep -E '^(org/mozilla|mozilla/components)/.*Fragment\.class$' |
-		sed 's|/|.|g; s|\.class$||' | sort -u |
-		sed 's|.*|  { "name": "&", "methods": [{ "name": "<init>", "parameterTypes": [] }] },|' |
-		sed '$ s/,$//'
-	echo "]"
-} >"$GENCFG"
-echo "fragments registered for reflection: $(grep -c '"name"' "$GENCFG")"
+python3 "$HERE/gen-reflect-config.py" "$GENCFG" "$HAX" "$SHIMJAR" "${JARS[@]}"
 
 # SDK_INT is a static final int: initialised at build time it is constant-folded
 # into every "SDK_INT >= N" branch in the app and no run-time -D can undo it.
