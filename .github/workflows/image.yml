@@ -108,7 +108,8 @@ jobs:
             local out="dl/$2-$3"
             [ -f "$out" ] || curl -Lf --retry 3 -o "$out" \
               "https://github.com/$1/releases/download/$2/$3"
-            [ -z "$4" ] || echo "$4  $out" | sha256sum -c -
+            # the check's own "OK" would otherwise land in the captured path
+            [ -z "$4" ] || echo "$4  $out" | sha256sum -c - >&2
             echo "$out"
           }
           sdk=$(get "${{ steps.pins.outputs.FENIX_SDK_REPO }}" \
