@@ -46,6 +46,15 @@ registered, and a JDK name is registered with its constructors only:
 *methods* makes `getClassLoader` reachable, and the class loader drags a
 `JarFile` into the image heap.
 
+A fifth: androidx navigation's **safeargs**. `NavArgsLazy` does
+`getMethod("fromBundle", Bundle)` on the generated `<Fragment>Args` class, and
+an Args class is not a Fragment, so the `ROOTS` scan never reaches it --
+`TabManagementFragment.onCreateView` threw `NoSuchMethodException` on
+`TabManagementFragmentArgs.fromBundle` and left the tab tray broken while the
+process lived on. The root is the interface every generated class implements
+rather than the `*Args` name: `androidx.browser.trusted` has eleven Args classes
+that have nothing to do with navigation.
+
 Generated at build time rather than committed: a payload bump adds and removes
 classes, and a stale list is a list that is wrong exactly where it matters.
 """
@@ -81,6 +90,11 @@ ROOTS = (
 SPAN_ROOTS = ("android/text/style/CharacterStyle", "android/text/style/ParagraphStyle",
               "android/text/ParcelableSpan", "android/text/NoCopySpan",
               "android/text/style/UpdateAppearance")
+
+# The interface androidx navigation's generated argument classes implement. They
+# are reached by name, through NavArgsLazy, and by their *methods* rather than
+# their constructors -- fromBundle is static.
+NAVARGS_ROOTS = ("androidx/navigation/NavArgs",)
 
 # Gecko's markers for "this is reached from native code or by name". The
 # annotations are dropped at runtime, but their descriptor stays in the
@@ -194,6 +208,12 @@ def main():
     entries += [{"name": c.replace("/", ".") + "[]", "unsafeAllocated": True}
                 for c in spans]
 
+    navargs = sorted(c for c in parents
+                     if c not in NAVARGS_ROOTS and descends_from(c, NAVARGS_ROOTS))
+    entries += [{"name": c.replace("/", "."), "allDeclaredMethods": True,
+                 "allDeclaredConstructors": True}
+                for c in navargs]
+
     # A name the class path does not have would be registered as unresolvable;
     # java.* is not on the class path but is always there.
     native = {c for c in xul_classes(xul)
@@ -216,7 +236,8 @@ def main():
             json.dump(data, f, indent=2)
             f.write("\n")
     print(f"reflection: {len(picked)} name-instantiated classes, "
-          f"{len(spans)} span array types, {len(jni)} JNI classes and "
+          f"{len(spans)} span array types, {len(navargs)} navigation Args "
+          f"classes, {len(jni)} JNI classes and "
           f"{len(jdk)} JDK names for FindClass, out of {len(parents)} classes")
 
 
