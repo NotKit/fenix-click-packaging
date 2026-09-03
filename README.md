@@ -36,10 +36,12 @@ Siblings, for orientation:
                     framework builds its generic families from
     classpath/      shim.jar and Fenix's jars
     jvm/            a jlink image of the arm64 OpenJDK 21, not a copy of the JDK
-    fenix.apk       resources, assets and the binary manifest — its dex and its
-                    lib/ are inert on a JVM class path, but atlas's
+    fenix.apk       resources, assets and the binary manifest — atlas's
                     AssetManager finds resource containers by scanning the class
-                    path for zips holding an AndroidManifest.xml
+                    path for zips holding an AndroidManifest.xml. Repackaged by
+                    scripts/strip-apk.py: the dex, the APK's own lib/ and the
+                    signature files are inert on a JVM class path and come out,
+                    47 MB of 113.5. assets/omni.ja stays — see below.
     run.sh          the device launcher. It sets the environment up and then
                     execs the launcher, so the process Lomiri started IS the
                     browser: suspend, resume and close reach the JVM directly.
@@ -123,6 +125,22 @@ each jar's mtime and invalidates the archive until a clean exit writes another.
 
     clickable build --arch arm64 --skip-review
     clickable install --ssh <device>
+
+`FENIX_APK_STRIP` is what `scripts/strip-apk.py` takes out of the resource APK,
+`dex,sig,lib` by default; empty ships it whole. **`omni` is a drop set it
+supports and must not be given here.** `assets/omni.ja` is the APK's biggest
+entry and looks redundant beside the unpacked GRE in `gecko/`, but
+`GeckoThread.getMainProcessArgs` passes `-greomni <packageResourcePath>`
+unconditionally, so Gecko opens the APK itself as its GRE jar; without that
+entry the run is a SIGSEGV right after `GeckoThread: State changed to
+JNI_READY`, with nothing logged. Dropping it would mean patching GeckoThread.
+
+What the repackaging must preserve is `resources.arsc` **stored and 4-byte
+aligned**. libandroidfw's `ApkAssets::LoadImpl` asks for
+`getIncFsBuffer(aligned=true)`, and the two fallbacks both cost: unaligned goes
+through `_FileAsset::ensureAlignment`, which memcpy's all 17 MB, and compressed
+goes through `_CompressedAsset`, which inflates them. `strip-apk.py` pads stored
+entries with the same raw zero bytes of local extra field the upstream APK uses.
 
 There is no submodule and no atlas build: `build.sh` downloads the SDK tag it
 pins and unpacks it. To test an unreleased atlas, point `FENIX_SDK_DIR` at a

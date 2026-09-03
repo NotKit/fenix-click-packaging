@@ -79,6 +79,10 @@ FENIX_SDK_SHA256="${FENIX_SDK_SHA256:-9ee318ed727e217a929a486b907014b73742a74bfc
 FENIX_PAYLOAD_TAG="${FENIX_PAYLOAD_TAG:-payload-20260829-ga33881773531}"
 FENIX_PAYLOAD_SHA256="${FENIX_PAYLOAD_SHA256:-45034c037f19a7a0e1bdb3f416b295150f6a8fb317465197d9c8fbead5162c07}"
 
+# What to repackage out of the resource APK, as strip-apk.py's --drop sets.
+# Empty ships it whole. See the APK staging step for why omni is not in here.
+FENIX_APK_STRIP="${FENIX_APK_STRIP-dex,sig,lib}"
+
 # JNA ships the desktop natives the class path's own jar (an AAR classes.jar)
 # does not carry. The version must be the one the class path was built against.
 JNA_VERSION="${JNA_VERSION:-5.18.1}"
@@ -316,7 +320,26 @@ rsync -a "$PAYLOAD_DIR/gecko/" "$INSTALL_DIR/gecko/"
 # The resource container. Its dex and its lib/ are inert on a JVM class path;
 # atlas's AssetManager finds it by scanning for a zip holding an
 # AndroidManifest.xml, and PackageParser reads that manifest as AAPT binary XML.
-cp "$PAYLOAD_DIR/fenix.apk" "$INSTALL_DIR/fenix.apk"
+#
+# So they are repackaged out, with the signature files: 47 MB of 113.5. What
+# stays and looks like it should not is assets/omni.ja, the single biggest
+# entry -- GeckoThread hands Gecko "-greomni <packageResourcePath>", so Gecko
+# opens this very APK as its GRE jar and the unpacked gecko/ tree does not
+# stand in. Without that entry the run is a SIGSEGV just after
+# "GeckoThread: State changed to JNI_READY", with nothing logged.
+#
+# strip-apk.py keeps resources.arsc stored and word-aligned, which is the only
+# form libandroidfw mmaps: unaligned it memcpy's all 17 MB and compressed it
+# inflates them.
+if [ -n "$FENIX_APK_STRIP" ]; then
+	log "repackaging the resource APK, dropping $FENIX_APK_STRIP"
+	python3 "$ROOT/scripts/strip-apk.py" --drop "$FENIX_APK_STRIP" \
+		"$PAYLOAD_DIR/fenix.apk" "$INSTALL_DIR/fenix.apk" |
+		while read -r l; do log "  $l"; done
+else
+	log "resource APK: shipped whole (FENIX_APK_STRIP empty)"
+	cp "$PAYLOAD_DIR/fenix.apk" "$INSTALL_DIR/fenix.apk"
+fi
 
 install -m 0755 "$ROOT/run.sh" "$INSTALL_DIR/run.sh"
 install -m 0644 "$ROOT/user.js" "$INSTALL_DIR/user.js"
