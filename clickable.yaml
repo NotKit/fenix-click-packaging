@@ -8,8 +8,10 @@ restrict_arch: arm64
 builder: custom
 build: ${ROOT}/build.sh
 
-# The launcher process to stop on install or redeploy.
-kill: android-translation-layer-hotspot
+# The launcher process to stop on install or redeploy. clickable turns this into
+# a `pkill -f`, so the common prefix stops either vehicle's launcher -- an
+# -aot click has no android-translation-layer-hotspot to match.
+kill: android-translation-layer
 
 # Almost nothing is built here: atlas and its native chain arrive as the SDK
 # tarball atl-touch's CI publishes, and Gecko as the payload tarball. What is
