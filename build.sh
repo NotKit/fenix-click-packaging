@@ -79,6 +79,24 @@ FENIX_SDK_SHA256="${FENIX_SDK_SHA256:-9ee318ed727e217a929a486b907014b73742a74bfc
 FENIX_PAYLOAD_TAG="${FENIX_PAYLOAD_TAG:-payload-20260829-ga33881773531}"
 FENIX_PAYLOAD_SHA256="${FENIX_PAYLOAD_SHA256:-45034c037f19a7a0e1bdb3f416b295150f6a8fb317465197d9c8fbead5162c07}"
 
+# Which vehicle this click carries. The two are separate clicks under the same
+# package name, so a device holds one at a time and installing the other is an
+# upgrade: the profile in ~/.local/share survives it.
+#
+#   image    the ahead-of-time image alone -- no JVM, no jars, no CDS
+#   hotspot  the JVM, the jars and the base CDS archive alone
+#   both     one click that carries either, which is what a local build wants
+#
+# clickable does not forward the host environment into its container, so CI
+# picks the vehicle by writing .vehicle into the repo, the same bind mount
+# prebuilt/image arrives through. An env var wins when there is one, which is
+# how a container-mode or direct run selects it.
+FENIX_VEHICLE="${FENIX_VEHICLE:-$(cat "$ROOT/.vehicle" 2>/dev/null || echo both)}"
+case "$FENIX_VEHICLE" in
+image | hotspot | both) ;;
+*) echo "FENIX_VEHICLE must be image, hotspot or both, not $FENIX_VEHICLE" >&2; exit 1 ;;
+esac
+
 # What to repackage out of the resource APK, as strip-apk.py's --drop sets.
 # Empty ships it whole. See the APK staging step for why omni is not in here.
 FENIX_APK_STRIP="${FENIX_APK_STRIP-dex,sig,lib}"
@@ -228,7 +246,10 @@ FENIX_IMAGE_TAG="${FENIX_IMAGE_TAG:-}"
 FENIX_IMAGE_SHA256="${FENIX_IMAGE_SHA256:-}"
 IMAGE_DIR="$BUILD_DIR/image"
 
-if [ -n "${FENIX_IMAGE_DIR:-}" ]; then
+if [ "$FENIX_VEHICLE" = hotspot ]; then
+	log "vehicle: hotspot only, so no image travels"
+	IMAGE_DIR=""
+elif [ -n "${FENIX_IMAGE_DIR:-}" ]; then
 	log "image: using $FENIX_IMAGE_DIR"
 	IMAGE_DIR="$FENIX_IMAGE_DIR"
 elif [ -f "$ROOT/prebuilt/image/libfenix.so" ]; then
@@ -243,6 +264,12 @@ elif [ -n "$FENIX_IMAGE_TAG" ]; then
 else
 	IMAGE_DIR=""
 fi
+
+# An image-only click with no image would be a click with no browser in it, and
+# the failure is silent: run.sh finds no libfenix.so and falls back to a HotSpot
+# that is not there either.
+[ "$FENIX_VEHICLE" != image ] || [ -n "$IMAGE_DIR" ] ||
+	{ echo "FENIX_VEHICLE=image but no image was found" >&2; exit 1; }
 
 # An image *is* the framework and the class path, compiled: one built against a
 # different SDK or payload than this click carries is a different browser, and
@@ -263,12 +290,18 @@ fi
 
 log "assembling $INSTALL_DIR"
 rm -rf "$INSTALL_DIR"
-mkdir -p "$INSTALL_DIR"/{lib,atlas,classpath,gecko}
+mkdir -p "$INSTALL_DIR"/{lib,atlas,gecko}
+[ "$FENIX_VEHICLE" = image ] || mkdir -p "$INSTALL_DIR/classpath"
+
+# Which vehicle is installed, for anyone holding the phone: both clicks carry
+# the same package name and version, so nothing else tells them apart.
+echo "vehicle=$FENIX_VEHICLE" >"$INSTALL_DIR/VEHICLE.txt"
 
 # One flat directory for every native object, launcher included: atlas's natives
 # find each other through their $ORIGIN/ RUNPATH, and the SDK prefix the rest of
 # that RUNPATH names does not exist on the device.
-cp "$ATL/bin/android-translation-layer-hotspot" "$INSTALL_DIR/lib/"
+[ "$FENIX_VEHICLE" = image ] ||
+	cp "$ATL/bin/android-translation-layer-hotspot" "$INSTALL_DIR/lib/"
 if [ -n "$IMAGE_DIR" ]; then
 	# The image launcher dlopens the .so instead of linking libjvm.so; both live
 	# in lib/ with everything else so $ORIGIN finds them.
@@ -294,7 +327,8 @@ for l in libandroidfw.so liblog.so libbase.so libcutils.so libutils.so libziparc
 	cp "$ATL/lib/art/$l" "$INSTALL_DIR/lib/$l"
 done
 
-cp "$ATL/lib/java/api-impl_classes.jar" "$INSTALL_DIR/atlas/hax.jar"
+[ "$FENIX_VEHICLE" = image ] ||
+	cp "$ATL/lib/java/api-impl_classes.jar" "$INSTALL_DIR/atlas/hax.jar"
 cp "$ATL_DEX/framework-res.apk" "$INSTALL_DIR/atlas/"
 # The Roboto faces atlas builds its minikin generic families (sans-serif and its
 # weight aliases) from. Without them the framework asks fontconfig, which hands
@@ -308,8 +342,12 @@ mkdir -p "$INSTALL_DIR/atlas/system/fonts"
 cp -a "$ATL"/share/atl/system/fonts/. "$INSTALL_DIR/atlas/system/fonts/"
 log "bundled $(ls "$INSTALL_DIR"/atlas/system/fonts/*.ttf | wc -l) Roboto faces"
 
-cp "$OUT/shim.jar" "$INSTALL_DIR/classpath/"
-cp "$PAYLOAD_DIR"/classpath/*.jar "$INSTALL_DIR/classpath/"
+# The jars, for the vehicle that loads jars. libportshim.so is not among them:
+# both vehicles dlopen it, so it is copied with the other natives above.
+if [ "$FENIX_VEHICLE" != image ]; then
+	cp "$OUT/shim.jar" "$INSTALL_DIR/classpath/"
+	cp "$PAYLOAD_DIR"/classpath/*.jar "$INSTALL_DIR/classpath/"
+fi
 
 # Gecko, whole: libxul and the NSS set, omni.ja's siblings (chrome/, components/,
 # modules/, ...) and libmozglue.so. libmozglue stays *inside* gecko/ on purpose:
@@ -352,88 +390,93 @@ sed "s|@CLICK_VERSION@|${app_version:-0.0.0}|" "$ROOT/manifest.json" \
 	>"$INSTALL_DIR/manifest.json"
 
 # --- 6. the JVM -------------------------------------------------------------
-# A jlink image of the modules the app reaches, not a copy of the whole JDK
-# (about 210 MB down to about 75 MB). jlink is architecture-neutral, so the
-# host's builds the arm64 image out of the arm64 jmods and the cross build stays
-# a cross build. It also writes real files where Debian's JDK is a tree of
-# symlinks into /etc/java-21-openjdk and /etc/ssl/certs, none of which exists on
-# the device -- including a populated cacerts.
-#
-# Re-derive the module set when a dependency is added:
-#   jdeps --ignore-missing-deps --print-module-deps --multi-release 21 \
-#         -cp 'classpath/*:atlas/hax.jar' classpath/*.jar atlas/hax.jar
-# and keep it generous: a missing module is not a build error, it is a
-# NoClassDefFoundError on whatever path first needs it.
-JVM_MODULES="java.base,java.compiler,java.desktop,java.instrument,java.logging"
-JVM_MODULES="$JVM_MODULES,java.management,java.naming,java.net.http,java.prefs"
-JVM_MODULES="$JVM_MODULES,java.scripting,java.sql,java.xml,java.xml.crypto"
-JVM_MODULES="$JVM_MODULES,jdk.charsets,jdk.crypto.ec,jdk.jdwp.agent,jdk.localedata"
-JVM_MODULES="$JVM_MODULES,jdk.unsupported,jdk.zipfs"
 
-[ -d "$TARGET_JAVA_HOME/jmods" ] || {
-	echo "no jmods at $TARGET_JAVA_HOME -- jlink needs them and the jre package has none" >&2
-	exit 1
-}
-# jlink refuses jmods from another JDK build.
-host_build=$(sed -n 's/^JAVA_VERSION="\(.*\)"/\1/p' "$HOST_JAVA_HOME/release")
-target_build=$(sed -n 's/^JAVA_VERSION="\(.*\)"/\1/p' "$TARGET_JAVA_HOME/release")
-[ "$host_build" = "$target_build" ] || {
-	echo "JDK mismatch: host jlink is $host_build, arm64 jmods are $target_build" >&2
-	exit 1
-}
-
-log "jlinking the arm64 JVM"
-rm -rf "$INSTALL_DIR/jvm"
-"$HOST_JAVA_HOME/bin/jlink" \
-	--module-path "$TARGET_JAVA_HOME/jmods" \
-	--add-modules "$JVM_MODULES" \
-	--no-header-files --no-man-pages --compress=zip-6 \
-	--output "$INSTALL_DIR/jvm"
-# libjvm.so is the launcher's DT_NEEDED and the JVM derives java.home from where
-# it was loaded from, so this one file decides whether the image is usable.
-[ -f "$INSTALL_DIR/jvm/lib/server/libjvm.so" ] ||
-	{ echo "jlink produced no lib/server/libjvm.so" >&2; exit 1; }
-log "  JVM image: $(du -sh "$INSTALL_DIR/jvm" | cut -f1)"
-
-# The base CDS archive. A jlink image has none unless one is generated into it,
-# and the app archive run.sh writes on the device is a *dynamic* archive layered
-# on top of a base -- without one HotSpot refuses the flag outright and says so
-# only in its cds log, so every run has been paying full class loading with the
-# machinery in run.sh doing nothing. jlink's --generate-cds-archive cannot help
-# here: it runs the image's own java, and this is an aarch64 image built on
-# x86_64. qemu-user can run it, and a dump is about 8 s.
-#
-# It is not fatal if this fails. The click works without it, only slower, and a
-# build host with no qemu should still produce one.
-log "dumping the base CDS archive"
-jvm_java="$INSTALL_DIR/jvm/bin/java"
-if [ "$(uname -m)" = "aarch64" ]; then
-	cds_run=("$jvm_java")
-elif command -v qemu-aarch64-static >/dev/null; then
-	cds_run=(qemu-aarch64-static "$jvm_java")
-elif command -v qemu-aarch64 >/dev/null; then
-	cds_run=(qemu-aarch64 "$jvm_java")
+if [ "$FENIX_VEHICLE" = image ]; then
+	log "no JVM: this click is the ahead-of-time image alone"
 else
-	cds_run=()
-	echo "  !! no qemu-aarch64 -- shipping without a base CDS archive" >&2
-fi
-if [ ${#cds_run[@]} -gt 0 ]; then
-	# -Xshare:dump writes lib/server/classes.jsa, which is where the runtime
-	# looks with no -XX:SharedArchiveFile, so run.sh needs no change.
-	"${cds_run[@]}" -Xshare:dump >"$BUILD_DIR/cds-dump.log" 2>&1 ||
-		echo "  !! -Xshare:dump failed, see $BUILD_DIR/cds-dump.log" >&2
-fi
-if [ -f "$INSTALL_DIR/jvm/lib/server/classes.jsa" ]; then
-	log "  base CDS archive: $(du -h "$INSTALL_DIR/jvm/lib/server/classes.jsa" | cut -f1)"
-else
-	echo "  !! no jvm/lib/server/classes.jsa -- AppCDS will be off on the device" >&2
-fi
+	# A jlink image of the modules the app reaches, not a copy of the whole JDK
+	# (about 210 MB down to about 75 MB). jlink is architecture-neutral, so the
+	# host's builds the arm64 image out of the arm64 jmods and the cross build stays
+	# a cross build. It also writes real files where Debian's JDK is a tree of
+	# symlinks into /etc/java-21-openjdk and /etc/ssl/certs, none of which exists on
+	# the device -- including a populated cacerts.
+	#
+	# Re-derive the module set when a dependency is added:
+	#   jdeps --ignore-missing-deps --print-module-deps --multi-release 21 \
+	#         -cp 'classpath/*:atlas/hax.jar' classpath/*.jar atlas/hax.jar
+	# and keep it generous: a missing module is not a build error, it is a
+	# NoClassDefFoundError on whatever path first needs it.
+	JVM_MODULES="java.base,java.compiler,java.desktop,java.instrument,java.logging"
+	JVM_MODULES="$JVM_MODULES,java.management,java.naming,java.net.http,java.prefs"
+	JVM_MODULES="$JVM_MODULES,java.scripting,java.sql,java.xml,java.xml.crypto"
+	JVM_MODULES="$JVM_MODULES,jdk.charsets,jdk.crypto.ec,jdk.jdwp.agent,jdk.localedata"
+	JVM_MODULES="$JVM_MODULES,jdk.unsupported,jdk.zipfs"
 
-# The class-path archive (AppCDS) is NOT built here and NOT shipped: HotSpot
-# records each entry's size and mtime, so an archive made against this build
-# tree would be stale the moment the click is installed. run.sh creates one on
-# the device, in the cache directory, with -XX:+AutoCreateSharedArchive, on top
-# of the base archive above.
+	[ -d "$TARGET_JAVA_HOME/jmods" ] || {
+		echo "no jmods at $TARGET_JAVA_HOME -- jlink needs them and the jre package has none" >&2
+		exit 1
+	}
+	# jlink refuses jmods from another JDK build.
+	host_build=$(sed -n 's/^JAVA_VERSION="\(.*\)"/\1/p' "$HOST_JAVA_HOME/release")
+	target_build=$(sed -n 's/^JAVA_VERSION="\(.*\)"/\1/p' "$TARGET_JAVA_HOME/release")
+	[ "$host_build" = "$target_build" ] || {
+		echo "JDK mismatch: host jlink is $host_build, arm64 jmods are $target_build" >&2
+		exit 1
+	}
+
+	log "jlinking the arm64 JVM"
+	rm -rf "$INSTALL_DIR/jvm"
+	"$HOST_JAVA_HOME/bin/jlink" \
+		--module-path "$TARGET_JAVA_HOME/jmods" \
+		--add-modules "$JVM_MODULES" \
+		--no-header-files --no-man-pages --compress=zip-6 \
+		--output "$INSTALL_DIR/jvm"
+	# libjvm.so is the launcher's DT_NEEDED and the JVM derives java.home from where
+	# it was loaded from, so this one file decides whether the image is usable.
+	[ -f "$INSTALL_DIR/jvm/lib/server/libjvm.so" ] ||
+		{ echo "jlink produced no lib/server/libjvm.so" >&2; exit 1; }
+	log "  JVM image: $(du -sh "$INSTALL_DIR/jvm" | cut -f1)"
+
+	# The base CDS archive. A jlink image has none unless one is generated into it,
+	# and the app archive run.sh writes on the device is a *dynamic* archive layered
+	# on top of a base -- without one HotSpot refuses the flag outright and says so
+	# only in its cds log, so every run has been paying full class loading with the
+	# machinery in run.sh doing nothing. jlink's --generate-cds-archive cannot help
+	# here: it runs the image's own java, and this is an aarch64 image built on
+	# x86_64. qemu-user can run it, and a dump is about 8 s.
+	#
+	# It is not fatal if this fails. The click works without it, only slower, and a
+	# build host with no qemu should still produce one.
+	log "dumping the base CDS archive"
+	jvm_java="$INSTALL_DIR/jvm/bin/java"
+	if [ "$(uname -m)" = "aarch64" ]; then
+		cds_run=("$jvm_java")
+	elif command -v qemu-aarch64-static >/dev/null; then
+		cds_run=(qemu-aarch64-static "$jvm_java")
+	elif command -v qemu-aarch64 >/dev/null; then
+		cds_run=(qemu-aarch64 "$jvm_java")
+	else
+		cds_run=()
+		echo "  !! no qemu-aarch64 -- shipping without a base CDS archive" >&2
+	fi
+	if [ ${#cds_run[@]} -gt 0 ]; then
+		# -Xshare:dump writes lib/server/classes.jsa, which is where the runtime
+		# looks with no -XX:SharedArchiveFile, so run.sh needs no change.
+		"${cds_run[@]}" -Xshare:dump >"$BUILD_DIR/cds-dump.log" 2>&1 ||
+			echo "  !! -Xshare:dump failed, see $BUILD_DIR/cds-dump.log" >&2
+	fi
+	if [ -f "$INSTALL_DIR/jvm/lib/server/classes.jsa" ]; then
+		log "  base CDS archive: $(du -h "$INSTALL_DIR/jvm/lib/server/classes.jsa" | cut -f1)"
+	else
+		echo "  !! no jvm/lib/server/classes.jsa -- AppCDS will be off on the device" >&2
+	fi
+
+	# The class-path archive (AppCDS) is NOT built here and NOT shipped: HotSpot
+	# records each entry's size and mtime, so an archive made against this build
+	# tree would be stale the moment the click is installed. run.sh creates one on
+	# the device, in the cache directory, with -XX:+AutoCreateSharedArchive, on top
+	# of the base archive above.
+fi
 
 # --- 7. bundle what the device does not have --------------------------------
 # device-libs.txt is the device's own `ldconfig -p`. Anything the click needs

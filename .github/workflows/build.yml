@@ -238,8 +238,29 @@ jobs:
       - name: Install clickable
         run: pipx install clickable-ut
 
-      - name: Build
-        run: clickable build --arch arm64 --skip-review --verbose
+      # Two clicks, same package name and version: one carries the
+      # ahead-of-time image, the other the JVM, the jars and the base CDS
+      # archive. A device holds one at a time and installing the other is an
+      # upgrade, so the profile survives the swap. build.sh reads .vehicle
+      # because clickable does not forward the environment into its container,
+      # and clickable always names its output <package>_<version>_<arch>.click,
+      # so each build is moved aside before the next overwrites it.
+      #
+      # The stamps and the unpacked tarballs in build/ are reused by the second
+      # build; only the assembly, the jlink and the packaging run twice.
+      - name: Build both clicks
+        run: |
+          set -eux
+          mkdir -p out/clicks
+          for v in image hotspot; do
+            echo "$v" >.vehicle
+            clickable build --arch arm64 --skip-review --verbose
+            case $v in image) sfx=aot ;; hotspot) sfx=cds ;; esac
+            click=$(ls build/aarch64-linux-gnu/app/*.click)
+            mv "$click" "out/clicks/$(basename "${click%.click}")-$sfx.click"
+          done
+          rm -f .vehicle
+          ls -la out/clicks
 
       - name: Save download cache
         if: always()
@@ -248,11 +269,11 @@ jobs:
           path: build/aarch64-linux-gnu/app/downloads
           key: fenix-click-dl-${{ hashFiles('build.sh') }}
 
-      - name: Upload click package
+      - name: Upload click packages
         uses: actions/upload-artifact@v4
         with:
           name: fenix-click-arm64
-          path: build/aarch64-linux-gnu/app/*.click
+          path: out/clicks/*.click
           if-no-files-found: error
 
       # Actions artifacts need a GitHub login; a release does not. Tagged by the
@@ -263,18 +284,28 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          click=$(ls build/aarch64-linux-gnu/app/*.click)
-          # clickable names it <package>_<version>_<arch>.click
-          version=$(basename "$click" | cut -d_ -f2)
+          set -eu
+          clicks=(out/clicks/*.click)
+          # clickable names it <package>_<version>_<arch>, and the build step
+          # appends -aot or -cds
+          version=$(basename "${clicks[0]}" | cut -d_ -f2)
           eval "$(grep -E '^FENIX_SDK_TAG=' build.sh)"
           atl_sha="${FENIX_SDK_TAG#sdk-}"
           tag="v${version}-atl.${atl_sha}"
-          echo "publishing $click as $tag"
+          echo "publishing ${clicks[*]} as $tag"
+          notes=$(printf '%s\n' \
+            "Unofficial test build of Firefox for Android (Fenix) for Ubuntu Touch 24.04 (arm64), running on OpenJDK 21 through the Android Translation Layer, atlas commit \`${atl_sha}\`. Not a stable release — for testing only." \
+            "" \
+            "Two clicks, same package name — install one, not both:" \
+            "" \
+            "* \`-aot\` — Fenix compiled ahead of time by GraalVM \`native-image\`. Smaller, with no class loading and no class-data archive to warm up. **Take this one.**" \
+            "* \`-cds\` — the same browser on a bundled OpenJDK 21 with AppCDS. The fallback, and the one that gives real stack traces when something breaks." \
+            "" \
+            "Installing one over the other is an upgrade, so the profile survives the swap.")
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "$click" --clobber
+            gh release upload "$tag" "${clicks[@]}" --clobber
           else
-            gh release create "$tag" "$click" \
+            gh release create "$tag" "${clicks[@]}" \
               --title "Firefox (Fenix) ${version} — atl-touch ${atl_sha}" \
-              --prerelease \
-              --notes "Unofficial test build of Firefox for Android (Fenix) for Ubuntu Touch 24.04 (arm64), running on OpenJDK 21 through the Android Translation Layer, atlas commit \`${atl_sha}\`. Not a stable release — for testing only."
+              --prerelease --notes "$notes"
           fi

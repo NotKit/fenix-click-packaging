@@ -15,3 +15,6 @@ dist/
 
 # CI's image job drops libfenix.so here for build.sh to pick up (build.yml).
 /prebuilt/
+
+# which vehicle a build stages, written by CI beside the build (build.sh).
+.vehicle

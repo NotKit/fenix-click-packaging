@@ -4,6 +4,14 @@ An Ubuntu Touch click of **Firefox for Android (Fenix) running on a stock
 OpenJDK**, on top of the Android Translation Layer (atlas) and a Gecko compiled
 natively for glibc.
 
+CI publishes **two clicks per build, under the same package name**: `-aot`
+carries Fenix compiled ahead of time by GraalVM `native-image`, `-cds` carries
+the bundled OpenJDK 21, the jars and the base class-data archive. A device
+holds one at a time and installing the other is an upgrade, so the profile
+survives the swap. `FENIX_VEHICLE` in `build.sh` selects which, and `both`
+(the default for a local build) puts them in one click that `FENIX_VM` picks
+between. `VEHICLE.txt` in the installed tree says which one is there.
+
 There is no ART and no dex in this package. Fenix's Java arrives as ~360
 ordinary jars on a JVM class path, the framework arrives as `hax.jar` (javac
 output, not a dex), and `libxul.so` is an aarch64 glibc shared library that
@@ -125,6 +133,12 @@ each jar's mtime and invalidates the archive until a clean exit writes another.
 
     clickable build --arch arm64 --skip-review
     clickable install --ssh <device>
+
+`FENIX_VEHICLE` is `image`, `hotspot` or `both` (default). An `image` build
+stages no JVM, no jars and no `hax.jar`, and skips the jlink and the base CDS
+dump; a `hotspot` build stages no `libfenix.so`. CI writes the choice to
+`.vehicle` in the repo rather than passing it in the environment, which
+clickable does not forward into its container; an env var wins over the file.
 
 `FENIX_APK_STRIP` is what `scripts/strip-apk.py` takes out of the resource APK,
 `dex,sig,lib` by default; empty ships it whole. **`omni` is a drop set it

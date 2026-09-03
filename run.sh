@@ -15,8 +15,9 @@
 #                       it dies in skia.
 #   FENIX_VM=hotspot    start the bundled HotSpot instead of the GraalVM native
 #                       image: 361 jars, class loading and an AppCDS archive.
-#                       The image is the default when the click carries one,
-#                       and is the only vehicle this knob is needed to leave.
+#                       The image is the default when the click carries one.
+#                       A click built for one vehicle only (FENIX_VEHICLE in
+#                       build.sh) refuses the other with the reason.
 #   FENIX_CDS=off       do not use or write the AppCDS archive (~2 s slower).
 #   FENIX_E10S=1        let Gecko start content processes (default: single
 #                       process, which is what user.js pins).
@@ -43,8 +44,11 @@ case "${1:-}" in
 esac
 
 # Prefer the version-independent 'current' path: it is stable across upgrades.
+# Probed with either launcher, because a click may carry only one of them.
 PKG_ROOT="/opt/click.ubuntu.com/${PKG_NAME}/current"
-[ -x "${PKG_ROOT}/lib/android-translation-layer-hotspot" ] || PKG_ROOT="${APP_DIR}"
+[ -x "${PKG_ROOT}/lib/android-translation-layer-hotspot" ] ||
+    [ -x "${PKG_ROOT}/lib/android-translation-layer-image" ] ||
+    PKG_ROOT="${APP_DIR}"
 
 # --- which vehicle ----------------------------------------------------------
 # hotspot: the bundled JVM loads 361 jars at every start. image: atlas's
@@ -68,15 +72,16 @@ if [ -z "${FENIX_VM:-}" ]; then
     fi
 fi
 case "${FENIX_VM}" in
-    hotspot) ;;
-    image)
-        for f in lib/android-translation-layer-image lib/libfenix.so; do
-            [ -e "${PKG_ROOT}/${f}" ] && continue
-            echo "fenix: FENIX_VM=image but this click has no ${f}" >&2
-            exit 2
-        done ;;
+    hotspot) NEED="lib/android-translation-layer-hotspot atlas/hax.jar classpath" ;;
+    image)   NEED="lib/android-translation-layer-image lib/libfenix.so" ;;
     *) echo "fenix: FENIX_VM must be hotspot or image, not ${FENIX_VM}" >&2; exit 2 ;;
 esac
+for f in ${NEED}; do
+    [ -e "${PKG_ROOT}/${f}" ] && continue
+    echo "fenix: FENIX_VM=${FENIX_VM} but this click has no ${f}" >&2
+    [ -f "${PKG_ROOT}/VEHICLE.txt" ] && cat "${PKG_ROOT}/VEHICLE.txt" >&2
+    exit 2
+done
 
 # --- writable state ---------------------------------------------------------
 # STATE persists across upgrades and reboots and holds the profile; CACHE holds
