@@ -21,6 +21,12 @@ roots is registered with all its declared constructors -- `allDeclaredConstructo
 `(Context, AttributeSet)`, because the inflater picks between three shapes and a
 guess would register the wrong one silently.
 
+**The roots themselves count as descendants here.** `android.view.View` is
+concrete and a layout may carry a literal `<View/>` for a divider or a spacer,
+so the inflater builds `View` itself: excluding the roots cost a
+`NoSuchMethodException` on `android.view.View.<init>(Context, AttributeSet)`
+the first time the tab tray was opened.
+
 A second family: **span array types**. `Spannable.getSpans()` does
 `Array.newInstance(type, n)`, and an array class instantiated reflectively has
 to be registered for unsafe allocation -- `RegistrableDomainSpan[]` was an
@@ -197,8 +203,9 @@ def main():
         seen.add(name)
         return any(descends_from(p, roots, seen) for p in parents.get(name, ()))
 
-    picked = sorted(c for c in parents
-                    if c not in ROOTS and descends_from(c, ROOTS))
+    # descends_from is true for a root as well, which is deliberate: a layout
+    # names View, and the manifest could name Activity.
+    picked = sorted(c for c in parents if descends_from(c, ROOTS))
     entries = [{"name": c.replace("/", "."), "allDeclaredConstructors": True}
                for c in picked]
 
