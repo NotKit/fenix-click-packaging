@@ -45,9 +45,18 @@ A fourth, JNI only: **the class names libxul carries**. `FindClass` takes an
 internal name out of the binary's string table, so the names are all there to
 be read -- 46 of them, from `java/lang/IllegalStateException` (which Gecko
 throws from `runUiThreadCallback`, and whose absence killed the run a tenth of
-a second after the first paint) to `android/media/MediaCodec`. Names not on the
-class path are dropped, so a framework class atlas does not have is not
-registered, and a JDK name is registered with its constructors only:
+a second after the first paint) to `android/media/MediaCodec`. The prefix list
+is part of the pattern, and it cost a round trip: libxul also names four
+`org/webrtc` classes, which geckoview.jar has, and a page that touches WebRTC
+(`m.avito.ru` enumerates capture devices) died on
+
+    FATAL JNI ERROR! FindClass("org/webrtc/JniCommon") failed
+
+with a SIGSEGV and no Java stack. `org/mozilla` and `org/webrtc` are the only
+two prefixes among the app's own 49,816 classes that libxul names at all.
+Names not on the class path are dropped, so a framework class atlas does not
+have is not registered, and a JDK name is registered with its constructors
+only:
 `ThrowNew` needs the `(String)` one, while giving `java.lang.Class` all its
 *methods* makes `getClassLoader` reachable, and the class loader drags a
 `JarFile` into the image heap.
@@ -128,7 +137,7 @@ JNI_MARKERS = ("Lorg/mozilla/gecko/annotation/WrapForJNI;",
                "Lorg/mozilla/gecko/annotation/WebRTCJNITarget;")
 
 # An internal class name in a binary's string table: FindClass's argument.
-XUL_NAME = re.compile(rb"(?:java|javax|android|androidx|org/mozilla)"
+XUL_NAME = re.compile(rb"(?:java|javax|android|androidx|org/mozilla|org/webrtc)"
                       rb"(?:/[A-Za-z_$][A-Za-z0-9_$]*)+")
 
 # constant-pool tags whose entries are a fixed number of bytes after the tag
