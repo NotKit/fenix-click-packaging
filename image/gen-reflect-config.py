@@ -61,6 +61,22 @@ process lived on. The root is the interface every generated class implements
 rather than the `*Args` name: `androidx.browser.trusted` has eleven Args classes
 that have nothing to do with navigation.
 
+A sixth: Room's generated **database implementations**. `RoomDatabase.Builder.
+build()` ends in `KClassUtil.findAndInstantiateDatabaseImpl`, which does
+`Class.forName(<the DB class>_Impl)`, so the `_Impl` is named nowhere in the
+bytecode. The trace caught nine of the fourteen in the payload -- the five it
+missed are simply the databases a traced desktop boot never opened. One of them
+is `SitePermissionsDatabase_Impl`, and a site asking for a permission is enough:
+`m.avito.ru` did, `findSitePermissionsBy` threw
+
+    RuntimeException: Cannot find implementation for
+    mozilla.components.feature.sitepermissions.db.SitePermissionsDatabase
+
+on `Dispatchers.Main`, which is `FATAL EXCEPTION: main` and takes the process
+down mid-page. Rooting the scan at `RoomDatabase` covers the other four
+(addons' `UpdateAttempts`, `LoginException`, `Trackers`, share's `RecentApps`)
+and whatever the next payload adds.
+
 Generated at build time rather than committed: a payload bump adds and removes
 classes, and a stale list is a list that is wrong exactly where it matters.
 """
@@ -81,6 +97,7 @@ ROOTS = (
     "android/app/Application",
     "android/content/BroadcastReceiver",
     "android/content/ContentProvider",
+    "androidx/room/RoomDatabase",       # Room, from "<the DB class>_Impl"
 )
 
 # Span types get one more registration, of their *array* class. Text.getSpans()
