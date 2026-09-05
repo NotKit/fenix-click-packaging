@@ -107,6 +107,14 @@ ROOTS = (
     "android/content/BroadcastReceiver",
     "android/content/ContentProvider",
     "androidx/room/RoomDatabase",       # Room, from "<the DB class>_Impl"
+    # CoordinatorLayout.parseBehavior: app:layout_behavior is a class NAME in the
+    # layout (usually through @string/..., so not even a literal in the XML), and
+    # it is built with Class.forName + getConstructor(Context, AttributeSet).
+    # Without this the behavior silently comes out null, and BottomSheetDialog
+    # then throws "The view is not associated with BottomSheetBehavior" from
+    # setContentView -- which leaves its dialog on the navigation back stack and
+    # every later navigate() dying in tryDismissWithAnimation.
+    "androidx/coordinatorlayout/widget/CoordinatorLayout$Behavior",
 )
 
 # Span types get one more registration, of their *array* class. Text.getSpans()
