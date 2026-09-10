@@ -34,6 +34,10 @@ SHIM="$HERE/android-libs-shim-arm64"
 : "${READELF:=$HOME/.mozbuild/clang/bin/llvm-readelf}"
 # A later pref() call wins, so this appends and does not replace.
 : "${SWWR:=1}"
+# Where the click's APK sits on the phone.  It is baked into a chrome.manifest
+# line below, which cannot hold a variable, so it has to be the install path
+# and not the build one.
+: "${APK_INSTALL_PATH:=/opt/click.ubuntu.com/fenix.thekit/current/fenix.apk}"
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -83,6 +87,22 @@ fi
 	cp "$ABI/greprefs.js" "$tmp/greprefs.js"
 	( cd "$tmp" && zip -q -X -0 "$DIST/assets/omni.ja" greprefs.js )
 	rm -rf "$tmp"
+
+	# resource://android/, which the six built-in WebExtensions are addressed by
+	# -- fxawebchannel above all, without which a Firefox Sync login has no
+	# WebChannel and hangs with no error.  nsResProtocolHandler only fills
+	# mApkURI under #ifdef ANDROID (nsResProtocolHandler.cpp:58,138), so in a
+	# linux-toolkit build the host resolves to nothing.  A `resource`
+	# instruction is chrome registration data: the parser hands it to
+	# nsIResProtocolHandler::SetSubstitutionWithFlags, which is the call the
+	# C++ special case would have made.
+	tmp="$(mktemp -d)"
+	{ cat chrome.manifest
+	  printf 'resource android jar:file://%s!/\n' "$APK_INSTALL_PATH"
+	} > "$tmp/chrome.manifest"
+	( cd "$tmp" && zip -q -X -0 "$DIST/assets/omni.ja" chrome.manifest )
+	rm -rf "$tmp"
+	echo "   resource://android/ -> jar:file://$APK_INSTALL_PATH!/"
 	echo "   omni.ja: $(stat -c%s assets/omni.ja) bytes"
 )
 
