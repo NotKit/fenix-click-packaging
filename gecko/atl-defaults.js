@@ -25,6 +25,11 @@ pref("media.rdd-process.enabled", false);
 pref("media.utility-process.enabled", false);
 pref("security.sandbox.content.level", 0);
 
+// COOP off. A COOP+COEP page (gitlab.com/users/sign_in) asks for a fresh
+// BrowsingContext group, the swap needs the process switch this build
+// refuses, and Nightly's CheckIsBadPolicy assert then kills the browser.
+pref("browser.tabs.remote.useCrossOriginOpenerPolicy", false);
+
 // Software WebRender.  The GL path works too (SWWR=0 when staging); software
 // stays the default because it is the longer-tested one.
 pref("gfx.webrender.software", true);

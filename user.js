@@ -11,6 +11,11 @@ user_pref("media.rdd-process.enabled", false);
 user_pref("media.utility-process.enabled", false);
 user_pref("security.sandbox.content.level", 0);
 
+// COOP off. A COOP+COEP page (gitlab.com/users/sign_in) asks for a fresh
+// BrowsingContext group, the swap needs the process switch this build
+// refuses, and Nightly's CheckIsBadPolicy assert then kills the browser.
+user_pref("browser.tabs.remote.useCrossOriginOpenerPolicy", false);
+
 // Keep Gecko off the Java MediaCodec PDM. AndroidDecoderModule is the only
 // consumer of android.media.MediaCodec here, and its design does not fit ATL:
 // CodecProxy binds a service that GeckoView declares android:process=":media",
