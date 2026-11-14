@@ -170,7 +170,7 @@ jobs:
           cd gecko-src
           set +e; ./mach build; rc=$?; set -e
           missing=0
-          for f in libxul.so libnss3.so libmozsqlite3.so chrome.manifest \
+          for f in libxul.so libnss3.so libmozsqlite3.so libmegazord.so chrome.manifest \
                    modules components chrome arm64-v8a/greprefs.js; do
             [ -e "$OBJDIR/dist/bin/$f" ] || { echo "missing dist/bin/$f"; missing=1; }
           done
@@ -216,17 +216,11 @@ jobs:
             --omni "$OBJDIR/dist/bin/assets/omni.ja" \
             --out build/fenix/fenix-jvm.apk
 
-      # Built by megazord.yml, a few times a year; see gecko/README.md.
-      - name: Fetch the megazord
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Stage the megazord
         run: |
-          tag=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
-                --jq '[.[] | select(.assets[]?.name=="libmegazord-arm64.so")][0].tag_name')
-          [ -n "$tag" ] || { echo "no release carries libmegazord-arm64.so" >&2; exit 1; }
-          echo "megazord from $tag"
-          gh release download "$tag" -p libmegazord-arm64.so -D build/megazord
-          mv build/megazord/libmegazord-arm64.so build/megazord/libmegazord.so
+          mkdir -p build/megazord
+          "$MOZBUILD_STATE_PATH/clang/bin/llvm-objcopy" --strip-debug \
+            "$OBJDIR/dist/bin/libmegazord.so" build/megazord/libmegazord.so
 
       - name: Pack
         run: |

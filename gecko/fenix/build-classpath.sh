@@ -68,6 +68,7 @@ mkdir -p "$CLASSPATH_DIR"
 # objdir's omni.ja in afterwards.
 export GRADLE_INVOKED_WITHIN_MACH_BUILD=1
 export MOZCONFIG="$MOZCONFIG_FILE"
+export ATL_SHIM_DIR="${ATL_SHIM_DIR:-$ROOT/gecko}"
 
 # --no-configure-on-demand: the tree sets org.gradle.configureondemand=true,
 # which configures :fenix lazily *after* gradle.projectsEvaluated has fired, so

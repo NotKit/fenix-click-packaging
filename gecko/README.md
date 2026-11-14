@@ -16,13 +16,14 @@ runs exactly the sequence below.
 | `gecko/libmozglue.so` | `build-mozglue.sh` — relinked out of the same objdir |
 | `classpath/` | `fenix/build-classpath.sh` — ~360 jars |
 | `fenix.apk` | `fenix/stage-apk.sh` — the Gradle APK with the objdir's `omni.ja` put in |
-| `natives/megazord/` | `megazord/build-megazord.sh` — rarely; a release asset of its own |
+| `natives/megazord/` | the same Gecko objdir's `dist/bin/libmegazord.so` |
 
 ## In order
 
 Gecko is `NotKit/firefox` branch `atl/android-toolkit-glibc`, configured by that
 tree's own `mozconfig-atl-glibc-arm64`. It reads `ATL_SHIM_DIR`, which is what
-points it at this directory.
+points it at this directory. The current port is based on
+`FIREFOX-ANDROID_160_0_RELEASE`.
 
     git clone -b atl/android-toolkit-glibc https://github.com/NotKit/firefox gecko-src
 
@@ -41,8 +42,7 @@ translation layer's own `libandroid.so.0`:
 That library comes out of the same SDK tarball the click is assembled from —
 `usr/lib/libandroid.so.0` of the `sdk-<sha>` release `build.sh` pins — so the
 shim measures exactly the atlas the click ships and the gap list cannot drift
-from it. The gap comes out at 283 entry points; `ndk-gap.txt` is byte-identical
-between x86_64 and arm64.
+from it. The current SDK leaves 266 stubbed entry points.
 
 **2. Gecko.** `rustup target add aarch64-unknown-linux-gnu` first, if the
 toolchain has no std for it -- configure fails at "checking for rust target
@@ -68,6 +68,9 @@ payload's `gecko/` outside it:
 
     ./stage-gecko.sh --objdir gecko-src/obj-atl-glibc-arm64 --out build/gecko
     ./build-mozglue.sh --objdir gecko-src/obj-atl-glibc-arm64 --out build/mozglue/libmozglue.so
+    mkdir -p build/megazord
+    "$HOME/.mozbuild/clang/bin/llvm-objcopy" --strip-debug \
+        gecko-src/obj-atl-glibc-arm64/dist/bin/libmegazord.so build/megazord/libmegazord.so
 
 **4. Fenix.** Gradle, in the same tree. `settings.gradle` finds the objdir by
 running `./mach environment`, which is why this takes the mozconfig and not a
@@ -92,22 +95,14 @@ path:
 
 ## The megazord
 
-`megazord/` is not part of a payload build. `libmegazord.so` tracks the
-application-services revision the class path pins, which moves a few times a
-year, so it is built on its own and published as a release asset that the
-payload build downloads:
+Firefox 160 includes application-services in its source tree. The port's
+mozconfigs enable `--enable-appservices-in-tree` and set `MEGAZORD_VERSION`
+from `mobile/android/version.txt`. Gecko builds `libmegazord.so` against its
+own NSS libraries, and Gradle builds the matching JVM bindings from that same
+tree. The payload uses this library, so its native API and version match the
+class path.
 
-    APPSERVICES=<checkout> megazord/build-nss.sh          # ~40 min
-    APPSERVICES=<checkout> megazord/build-megazord.sh     # ~3 min
-
-`megazord.yml` runs these on an `ubuntu-24.04-arm` runner, where nothing is
-cross: the triplet-prefixed compilers the scripts ask for are the host's own and
-libz comes from apt. The same scripts cross-build on x86_64 with
-`CC_CROSS=aarch64-linux-gnu-gcc-14` and an aarch64 `SYSLIBS`.
-
-`MEGAZORD_REF` pointing at Mozilla's published x86_64 build turns on the check
-that matters — the uniffi symbol sets have to be equal, or the Kotlin
-`Native.register` calls on the class path do not all bind.
+`megazord/` and `megazord.yml` remain available for rebuilding older payloads.
 
 ## What is not built here
 
@@ -128,15 +123,8 @@ needs a token that can dispatch into this repository:
              -f event_type=gecko-push -F client_payload[ref]="$GITHUB_REF_NAME"
       env: { GH_TOKEN: "${{ secrets.PACKAGING_DISPATCH_TOKEN }}" }
 
-Two assets have to exist before the first payload build, because it downloads
-rather than builds them:
-
-* the `atl-sdk-arm64.tar.zst` of the SDK tag `build.sh` pins — published by
-  atl-touch's own CI.
-* `libmegazord-arm64.so` — published by `megazord.yml`, which is dispatch-only.
-
-Both are found by scanning releases for the asset name, newest first, so no tag
-has to be pinned.
+The `atl-sdk-arm64.tar.zst` of the SDK tag pinned by `build.sh` must already
+exist, published by atl-touch's CI. The payload builds its own megazord.
 
 A cold compile is about 70 minutes on a 4-core runner, which is what
 `--disable-debug-symbols` buys — it is set only in CI, since the staged payload

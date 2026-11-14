@@ -65,7 +65,7 @@ class-path symlink farm, `$ANDROID_ROOT/fonts` and the log — is in
 The click is assembled, not compiled. Two prebuilt inputs carry everything
 heavy, each pinned by tag and sha256 in `build.sh`.
 
-**`atl-sdk-arm64.tar.zst`** (36 MB) — atlas and its whole native chain, a
+**`atl-sdk-arm64.tar.zst`** (51 MiB) — atlas and its whole native chain, a
 release asset of [atl-touch](https://github.com/NotKit/atl-touch) built by that
 repository's own CI on a native arm64 runner (`ci/build-sdk.sh`, tagged
 `sdk-<atlas-sha>`). It carries the HotSpot launcher,
@@ -73,13 +73,19 @@ repository's own CI on a native arm64 runner (`ci/build-sdk.sh`, tagged
 `framework-res.apk`, the Roboto faces, and what Ubuntu Touch does not ship:
 `art_standalone`'s `libandroidfw` and friends, GLFW 3.4 and `libskia.so`.
 
+The pinned SDK includes ATL's content-hub clipboard bridge. It publishes text
+to the system clipboard and reads from content-hub before falling back to the
+Wayland selection.
+The framework exposes `ClipData` items, preserves Unicode text across JNI,
+and keeps editor focus while its copy/paste popup is open.
+
 The framework jar this vehicle uses is `api-impl_classes.jar`, the javac output.
 The `api-impl.jar` beside it under `lib/java/dex` is the same classes after d8 —
 a `classes.dex` HotSpot cannot read.
 
     FENIX_SDK_TAG=sdk-<sha> FENIX_SDK_DIR=<unpacked tree>   # to override either
 
-**`fenix-jvm-payload-arm64.tar.zst`** (205 MB) — Gecko for aarch64, Fenix's
+**`fenix-jvm-payload-arm64.tar.zst`** (226 MiB) — Gecko for aarch64, Fenix's
 class path, the resource APK and the aarch64 megazord. This is the half that
 changes with every Gecko or Fenix build, and `gecko/` builds it: the shim trees
 Gecko compiles and links against, and the scripts that stage the objdir, build
@@ -90,14 +96,14 @@ Fenix's class path and pack the result. Gecko itself is
 
 `.github/workflows/payload.yml` runs the whole sequence on an ordinary x86_64
 runner and publishes the tarball; `gecko/README.md` is the same sequence by
-hand. `megazord.yml` builds the one native Mozilla does not publish for this
-target, on an arm64 runner, a few times a year.
+hand. The Firefox 160 port builds the megazord and its JVM bindings from the
+same source tree, so it no longer needs a separate megazord release.
 
 Upload anything built by hand with `gh release create <tag> dist/<file>
 dist/<file>.sha256`, then point `build.sh`'s default tag at it — the payload
 workflow can open that bump as a PR itself.
 
-For local iteration neither has to be published: `FENIX_SYSROOT_DIR` and
+For local iteration neither has to be published: `FENIX_SDK_DIR` and
 `FENIX_PAYLOAD_DIR` name unpacked trees and are used as-is.
 
 ### A third, optional: the ahead-of-time image

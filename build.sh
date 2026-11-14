@@ -74,10 +74,10 @@ done_stamp() { touch "$STAMPS/$1.done"; }
 # which is how a local build iterates without publishing anything.
 FENIX_ASSET_REPO="${FENIX_ASSET_REPO:-NotKit/fenix-click-packaging}"
 FENIX_SDK_REPO="${FENIX_SDK_REPO:-NotKit/atl-touch}"
-FENIX_SDK_TAG="${FENIX_SDK_TAG:-sdk-040d634}"
-FENIX_SDK_SHA256="${FENIX_SDK_SHA256:-428b3ead19b9bbbcac07333b26ef6974df97f66557747d8ec6002935b48271c1}"
-FENIX_PAYLOAD_TAG="${FENIX_PAYLOAD_TAG:-payload-20260829-ga33881773531}"
-FENIX_PAYLOAD_SHA256="${FENIX_PAYLOAD_SHA256:-45034c037f19a7a0e1bdb3f416b295150f6a8fb317465197d9c8fbead5162c07}"
+FENIX_SDK_TAG="${FENIX_SDK_TAG:-sdk-e28c159}"
+FENIX_SDK_SHA256="${FENIX_SDK_SHA256:-b6533eee7ee2ec58f2d9031107e758b3f75bb7cd88e8bfb421ba68c9983146fb}"
+FENIX_PAYLOAD_TAG="${FENIX_PAYLOAD_TAG:-payload-20261114-g988f3fa4b18e}"
+FENIX_PAYLOAD_SHA256="${FENIX_PAYLOAD_SHA256:-d0a03591bf93fb31b58dc9d50d57bbafe18cdc1a408024ba9c95f49a49cba6d8}"
 
 # Which vehicle this click carries. The two are separate clicks under the same
 # package name, so a device holds one at a time and installing the other is an
@@ -103,7 +103,7 @@ FENIX_APK_STRIP="${FENIX_APK_STRIP-dex,sig,lib}"
 
 # JNA ships the desktop natives the class path's own jar (an AAR classes.jar)
 # does not carry. The version must be the one the class path was built against.
-JNA_VERSION="${JNA_VERSION:-5.18.1}"
+JNA_VERSION="${JNA_VERSION:-5.19.1}"
 JNA_SHA256="${JNA_SHA256:-}"
 
 fetch() { # fetch <url> <outfile> [sha256]
