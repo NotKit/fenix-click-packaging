@@ -483,7 +483,7 @@ fi
 # that is not there travels with it. Closure, because a bundled library brings
 # its own DT_NEEDED.
 
-device_libs="$ROOT/device-libs.txt"
+device_libs="${FENIX_DEVICE_LIBS:-$ROOT/device-libs.txt}"
 [ -f "$device_libs" ] || { echo "missing $device_libs" >&2; exit 1; }
 search_dirs=("/usr/lib/$TRIPLE" "/lib/$TRIPLE" "$ATL/lib" "$ATL/lib/art")
 unavailable=""

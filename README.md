@@ -106,6 +106,10 @@ workflow can open that bump as a PR itself.
 For local iteration neither has to be published: `FENIX_SDK_DIR` and
 `FENIX_PAYLOAD_DIR` name unpacked trees and are used as-is.
 
+`FENIX_DEVICE_LIBS` can override `device-libs.txt` with a list of library
+sonames available on the target. When deploying to several system releases,
+use their intersection so the click bundles the compatibility libraries.
+
 ### A third, optional: the ahead-of-time image
 
 **`fenix-image-arm64.tar.zst`** — Fenix's whole class path compiled by GraalVM's
