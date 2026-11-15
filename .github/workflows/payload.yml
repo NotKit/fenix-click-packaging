@@ -39,6 +39,7 @@ env:
   MOZBUILD_STATE_PATH: ${{ github.workspace }}/.mozbuild
   CCACHE_DIR: ${{ github.workspace }}/.ccache
   CCACHE_MAXSIZE: 5G
+  CARGO_BUILD_JOBS: "2"
 
 jobs:
   payload:
@@ -56,6 +57,14 @@ jobs:
                       /opt/hostedtoolcache/CodeQL /usr/share/swift || true
           sudo docker image prune -af || true
           df -h /
+
+      - name: Reserve build memory
+        run: |
+          sudo fallocate -l 8G /swapfile-atl-gecko
+          sudo chmod 600 /swapfile-atl-gecko
+          sudo mkswap /swapfile-atl-gecko
+          sudo swapon /swapfile-atl-gecko
+          free -h
 
       - name: Packages
         run: |
@@ -118,6 +127,7 @@ jobs:
           . "$topsrcdir/mozconfig-atl-glibc-arm64"
           ac_add_options --disable-debug-symbols
           ac_add_options --with-ccache=ccache
+          mk_add_options MOZ_MAKE_FLAGS=-j2
           EOF
           mkdir -p "$GITHUB_WORKSPACE/gecko/android-libs-shim-arm64"
           export MOZCONFIG=$PWD/mozconfig-ci
@@ -168,7 +178,12 @@ jobs:
         timeout-minutes: 280
         run: |
           cd gecko-src
+          vmstat -w 60 &
+          monitor_pid=$!
+          trap 'kill "$monitor_pid" 2>/dev/null || true' EXIT
           set +e; ./mach build; rc=$?; set -e
+          free -h
+          df -h "$GITHUB_WORKSPACE"
           missing=0
           for f in libxul.so libnss3.so libmozsqlite3.so libmegazord.so chrome.manifest \
                    modules components chrome arm64-v8a/greprefs.js; do
@@ -176,7 +191,7 @@ jobs:
           done
           if [ "$missing" != 0 ]; then
             echo "mach build exited $rc and the payload's inputs are not there" >&2
-            exit "${rc:-1}"
+            exit 1
           fi
           [ "$rc" = 0 ] ||
             echo "::notice::mach build exited $rc -- expected, android-stage-package cannot run here; every payload input is present"
